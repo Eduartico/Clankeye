@@ -1,8 +1,8 @@
-const express = require('express');
-const { fetchOffers } = require('../controllers/olxController');
+import express from 'express';
+import { fetchOffers } from '../controllers/olxController.js';
 
 const router = express.Router();
 
 router.get('/offers', fetchOffers);
 
-module.exports = router;
+export default router;

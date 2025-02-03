@@ -1,12 +1,19 @@
-const { fetchOlxOffers } = require('../services/olxService');
-const { saveToFile } = require('../utils/fileHandler');
-const Item = require('../models/item');
+import { fetchOlxOffers } from '../services/olxService.js';
+import Item from '../models/item.js';
 
-const FILE_PATH = './data/offers.txt';
-
-const fetchOffers = async (req, res) => {
+export const fetchOffers = async (req, res) => {
     try {
-        const fullResponse = await fetchOlxOffers(req.query);
+        const queryParams = {
+            offset: req.query.offset || 0, 
+            limit: req.query.limit || 40,
+            query: req.query.query || 'clone wars', 
+            sort_by: req.query.sort_by || 'created_at:desc',
+            filter_refiners: req.query.filter_refiners || 'spell_checker',
+            suggest_filters: req.query.suggest_filters || 'true',
+            sl: req.query.sl || '194cde7fdb1x64d67f04', 
+        };
+
+        const fullResponse = await fetchOlxOffers(queryParams);
 
         const rawItems = fullResponse.data || [];
 
@@ -20,18 +27,10 @@ const fetchOffers = async (req, res) => {
                 description: offer.description,
                 price: priceParam.value ?? null,
                 currency: priceParam.currency ?? null,
-                negotiable: priceParam.negotiable ?? false,
                 createdTime: offer.created_time,
-                lastRefreshTime: offer.last_refresh_time,
-                validToTime: offer.valid_to_time,
-                isHighlighted: offer.promotion?.highlighted ?? false,
-                isUrgent: offer.promotion?.urgent ?? false,
-                isTopAd: offer.promotion?.top_ad ?? false,
-                business: offer.business,
+                isOnWishlist: false, //todo: implement this feature
             });
         });
-
-        saveToFile(FILE_PATH, JSON.stringify(items));
 
         res.status(200).json({
             success: true,
@@ -41,8 +40,4 @@ const fetchOffers = async (req, res) => {
         console.error('Error fetching offers:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
-};
-
-module.exports = {
-    fetchOffers,
 };

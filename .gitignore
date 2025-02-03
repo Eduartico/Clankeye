@@ -3,3 +3,5 @@
 /project-ui/node_modules
 /project-backend/package-lock.json
 /project-ui/package-lock.json
+project-backend/package-lock.json
+project-backend/swagger-output.json

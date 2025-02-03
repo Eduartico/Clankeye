@@ -6,14 +6,8 @@ class Item {
         description,
         price,
         currency,
-        negotiable,
         createdTime,
-        lastRefreshTime,
-        validToTime,
-        isHighlighted,
-        isUrgent,
-        isTopAd,
-        business,
+        isOnWishlist,
     }) {
         this.id = id;
         this.url = url;
@@ -21,15 +15,9 @@ class Item {
         this.description = description;
         this.price = price;
         this.currency = currency;
-        this.negotiable = negotiable;
         this.createdTime = createdTime;
-        this.lastRefreshTime = lastRefreshTime;
-        this.validToTime = validToTime;
-        this.isHighlighted = isHighlighted;
-        this.isUrgent = isUrgent;
-        this.isTopAd = isTopAd;
-        this.business = business;
+        this.isOnWishlist = isOnWishlist;
     }
 }
 
-module.exports = Item;
+export default Item;
