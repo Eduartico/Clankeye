@@ -10,9 +10,7 @@ const doc = {
 };
 
 const outputFile = './swagger-output.json';
-const endpointsFiles = [
-    './routes/olxRoutes.js', 
-    './routes/vintedRoutes.js'
-];
+
+const endpointsFiles = ['./routes.js'];
 
 swaggerAutogen()(outputFile, endpointsFiles, doc);
