@@ -6,7 +6,7 @@ interface CardItemProps {
 }
 export default function CardItem({ item }: CardItemProps) {
   return (
-    <div className="w-[400px] min-h-[450px] bg-white dark:bg-gray-800 border scroll border-gray-200 rounded-3xl shadow dark:border-none overflow-auto p-5 group cursor-pointer hover:shadow-lg hover:shadow-purple-300 hover:scale-[1.02] transition ease-in-out duration-150  ">
+    <div className="w-[400px] min-h-[450px] bg-white dark:bg-gray-800 ring-1 ring-gray-300 rounded-3xl shadow dark:border-none overflow-auto p-5 group cursor-pointer hover:shadow-lg hover:shadow-purple-300 hover:scale-[1.02] transition ease-in-out duration-150  ">
       <div className="w-full h-full flex flex-col  gap-4">
         <img
           src={item.imgLink || NoImage}

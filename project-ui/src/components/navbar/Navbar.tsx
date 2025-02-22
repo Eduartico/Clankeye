@@ -7,7 +7,7 @@ import ToggleDarkTheme from "../buttons/ToggleDarkTheme";
 export default function Navbar() {
   const navigate = useNavigate(); // use to navigate to another page "navigate('/')"
   return (
-    <nav className="bg-white dark:bg-gray-900 sticky w-full z-20 top-0 start-0 border-b border-gray-200 dark:border-gray-600">
+    <nav className="bg-white dark:bg-gray-900 sticky w-full z-20 top-0 start-0 border-b border-gray-300 dark:border-gray-600">
       <div className="w-full flex flex-wrap items-center justify-around p-4">
         <a
           href="/"

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { fetchItems } from "../services/api";
 import SearchBar from "../components/search/SearchBar";
 import CloseIcon from "@mui/icons-material/Close";
-import PaginationHandler from "../components/pagination/Pagination";
 import GridCards from "../components/grid/GridCards";
 import CardItem from "../components/cards/CardItem";
 import Header from "../components/header/Header";
@@ -15,14 +14,6 @@ export default function HomePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
 
   useEffect(() => {
     const loadItems = async () => {
@@ -64,7 +55,7 @@ export default function HomePage() {
           />
         </div>
       )}
-      <div className="w-full h-full gap-y-4 dark:bg-zinc-950 rounded-xl p-5">
+      <div className="w-full h-full gap-y-4 bg-zinc-200 dark:bg-zinc-950 rounded-xl p-5">
         <GridCards>
           {items.map((item) => (
             <CardItem key={item.id} item={item} />
@@ -73,11 +64,7 @@ export default function HomePage() {
         {items.length === 0 && query && <h1>No results found.</h1>}
         {!items.length && query && <h1 className="text-center text-2xl font-bold text-slate-700 dark:text-white">Loading...</h1>}
         {!items.length && !query && <h1 className="text-center text-lg font-bold text-slate-700 dark:text-white">search for something bro hurry up</h1>}
-        <PaginationHandler
-          page={page}
-          count={totalPages}
-          onChange={handleChangePage}
-        />
+
       </div>
     </div>
   );
