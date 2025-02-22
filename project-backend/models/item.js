@@ -8,6 +8,7 @@ class Item {
         currency,
         createdTime,
         isOnWishlist,
+        imgLink
     }) {
         this.id = id;
         this.url = url;
@@ -17,6 +18,7 @@ class Item {
         this.currency = currency;
         this.createdTime = createdTime;
         this.isOnWishlist = isOnWishlist;
+        this.imgLink = imgLink;
     }
 }
 

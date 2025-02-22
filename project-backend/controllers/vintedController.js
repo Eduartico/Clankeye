@@ -4,7 +4,7 @@ import Item from '../models/item.js';
 export const fetchVintedOffers = async (req, res) => {
   try {
     const queryParams = {
-      text: req.query.text || 'clone wars',
+      text: req.query.text || '',
       currency: req.query.currency || 'EUR',
       order: req.query.order || 'newest_first'
     };

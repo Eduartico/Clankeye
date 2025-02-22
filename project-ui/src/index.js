@@ -1,16 +1,17 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client'; // Use the new createRoot API
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
+import React from "react";
+import ReactDOM from "react-dom/client"; 
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import "./index.css";
 
-// Create the root container
-const root = ReactDOM.createRoot(document.getElementById('root'));
-
-// Render the app
-root.render(
+try {
+  ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
-        <BrowserRouter>
-            <App />
-        </BrowserRouter>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </React.StrictMode>
-);
+  );
+} catch (error) {
+  console.error(error);
+}
