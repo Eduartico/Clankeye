@@ -10,12 +10,12 @@ export default function ToggleDarkTheme() {
   return (
     <button
       onClick={theme.toggleTheme}
-      className="p-2 rounded-full   bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:text-gray-500 text-gray-500 hover:text-gray-700 transition ease-in-out duration-200"
+      className="flex items-center justify-center p-2 rounded-full bg-zinc-200 dark:bg-zinc-800 dark:text-thunderbird-500 dark:hover:text-thunderbird-400 text-thunderbird-500 hover:text-thunderbird-700 transition ease-in-out duration-200"
     >
       {theme.isDarkMode ? (
-        <LightModeIcon className="w-6 h-6" />
+        <LightModeIcon   />
       ) : (
-        <DarkModeIcon className="w-6 h-6" />
+        <DarkModeIcon   />
       )}
     </button>
   );

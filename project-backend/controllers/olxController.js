@@ -50,8 +50,9 @@ export const fetchOffers = async (req, res) => {
 };
 
 const formatImgLink = (img) => {
-  // get everything before the last "="
-  let link = img.link.split("=").slice(0, -1).join("=");
-  link += "=" + img.width + "x" + img.height;
+  // delete everything after image;s= and add the width and height
+  
+  let link = img.link.split("/").slice(0, -1).join("/");
+  link += "/image;s=" + img.width + "x" + img.height;
   return link;
 };
