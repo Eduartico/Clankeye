@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { fetchItems } from "../services/api";
-import SearchBar from "../components/search/SearchBar";
-import CloseIcon from "@mui/icons-material/Close";
 import GridCards from "../components/grid/GridCards";
 import CardItem from "../components/cards/CardItem";
-import Header from "../components/header/Header";
-import SelectedItem from "../components/selected/SelectedItem";
+import { useQuery } from "../contexts/QueryContextType";
 
 export default function HomePage() {
   const [items, setItems] = useState([]);
-  const [query, setQuery] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  const { query, setQuery } = useQuery();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -38,25 +34,27 @@ export default function HomePage() {
   }, [query]);
 
   return (
-    <div className="w-full h-full flex flex-col relative dark:bg-zinc-900 py-5 gap-5">
-      <Header>
-        <h1 className="text-3xl font-bold text-slate-700 dark:text-white">
-          What are you looking for?
+    <div className="w-full h-full flex flex-col relative dark:bg-zinc-900 py-5 gap-5 px-14">
+      <GridCards>
+        {items.map((item) => (
+          <CardItem key={item.id} item={item} />
+        ))}
+      </GridCards>
+      {items.length === 0 && query && !loading && (
+        <h1 className="text-center text-2xl font-bold text-slate-700 dark:text-white">
+          No results found.
         </h1>
-        <SearchBar searchInput={searchInput} setSearchInput={setSearchInput} setQuery={setQuery} />
-      </Header>
-
-      <div className="w-full h-full gap-y-4 bg-zinc-200 dark:bg-zinc-950 rounded-xl p-5">
-        <GridCards>
-          {items.map((item) => (
-            <CardItem key={item.id} item={item} />
-          ))}
-        </GridCards>
-        {items.length === 0 && query && !loading && <h1 className="text-center text-2xl font-bold text-slate-700 dark:text-white">No results found.</h1>}
-        {!items.length && query && loading && <h1 className="text-center text-2xl font-bold text-slate-700 dark:text-white">Loading...</h1>}
-        {!items.length && !query && <h1 className="text-center text-lg font-bold text-slate-700 dark:text-white">search for something bro hurry up</h1>}
-
-      </div>
+      )}
+      {!items.length && query && loading && (
+        <h1 className="text-center text-2xl font-bold text-slate-700 dark:text-white">
+          Loading...
+        </h1>
+      )}
+      {!items.length && !query && (
+        <h1 className="text-center text-lg font-bold text-slate-700 dark:text-white">
+          search for something bro hurry up
+        </h1>
+      )}
     </div>
   );
 }

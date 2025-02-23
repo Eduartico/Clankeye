@@ -3,12 +3,16 @@
 import { useNavigate } from "react-router-dom";
 import Icon from "../../assets/stormtrooper.png";
 import ToggleDarkTheme from "../buttons/ToggleDarkTheme";
+import SearchBar from "../search/SearchBar";
+import { useQuery } from "../../contexts/QueryContextType";
 
 export default function Navbar() {
-  const navigate = useNavigate(); // use to navigate to another page "navigate('/')"
+  const { query, setQuery } = useQuery();
+
+  const navigate = useNavigate();
   return (
     <nav className="bg-white dark:bg-zinc-900 sticky w-full z-20 top-0 start-0 border-b border-gray-300 dark:border-gray-600">
-      <div className="w-full flex flex-wrap items-center justify-around p-4">
+      <div className="w-full flex flex-wrap items-center justify-center md:justify-between gap-4 py-4 px-14 lg:px-32">
         <a
           href="/"
           className="flex items-center space-x-3 rtl:space-x-reverse group"
@@ -18,17 +22,19 @@ export default function Navbar() {
             Clankeye
           </span>
         </a>
-        <div className="flex md:order-2 gap-x-4">
+        <div className="flex flex-wrap justify-center gap-4 md:order-2 gap-x-10">
           <ToggleDarkTheme />
 
-          <button
+          <SearchBar setQuery={setQuery} />
+
+          {/* <button
             onClick={() => {}}
             type="button"
             id="btnLogin"
             className="text-white bg-zinc-800 hover:bg-zinc-900 focus:ring-4 focus:outline-none focus:ring-thunderbird-500 font-medium rounded-md text-md px-5 py-2 text-center transition ease-in-out duration-200"
           >
             Login
-          </button>
+          </button> */}
 
           {/* <button
             data-collapse-toggle="navbar-sticky"
@@ -41,7 +47,7 @@ export default function Navbar() {
           </button> */}
         </div>
         <div
-          className="items-center justify-between hidden w-full md:flex md:w-auto md:order-1"
+          className="items-center justify-between hidden w-full xl:flex md:w-auto md:order-1"
           id="navbar-sticky"
         >
           <ul className="flex flex-col p-4 md:p-0 mt-4 text-xl font-semibold border border-gray-100 rounded-lg bg-gray-50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-transparent dark:border-gray-700">

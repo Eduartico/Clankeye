@@ -17,7 +17,7 @@ export default function CardItem({ item }: CardItemProps) {
   };
 
   return (
-    <div className="w-[400px] min-h-[450px] bg-white dark:bg-zinc-900 border-2 border-gray-300 dark:border-[#393939] rounded-3xl p-5 group cursor-pointer hover:shadow-lg hover:shadow-thunderbird-500 hover:scale-[1.02] transition ease-in-out duration-150" onMouseDown={handleClick}>
+    <div className="w-[300px] sm:w-[400px] min-h-[450px] bg-white dark:bg-zinc-900 border-2 border-gray-300 dark:border-[#393939] rounded-3xl p-5 group cursor-pointer hover:shadow-lg hover:shadow-thunderbird-500 hover:scale-[1.02] transition ease-in-out duration-150" onMouseDown={handleClick}>
       <div className="w-full h-full flex flex-col gap-4">
         <img
           src={item.imgLink || NoImage}
