@@ -1,9 +1,9 @@
 export const isItemOnWishlist = (title, description, category, wishlist) => {
     if (!wishlist.length) return false;
     
-    const lowerTitle = title.toLowerCase();
-    const lowerDescription = description?.toLowerCase() || '';
-    const lowerCategory = category?.toLowerCase() || '';
+    const lowerTitle = title ? title.toLowerCase() : '';
+    const lowerDescription = description ? description.toLowerCase() : '';  
+    const lowerCategory = category ? category.toLowerCase() : '';  
 
     return wishlist.some(word => 
         lowerTitle.includes(word.toLowerCase()) || 
@@ -11,6 +11,7 @@ export const isItemOnWishlist = (title, description, category, wishlist) => {
         lowerCategory.includes(word.toLowerCase())
     );
 };
+
 
 export const filterItems = (items, filtered) => {
     if (!filtered.length) return items;

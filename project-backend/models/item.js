@@ -9,6 +9,7 @@ class Item {
         currency,
         createdTime,
         isOnWishlist,
+        source,
         photos = []
     }) {
         this.id = id;
@@ -20,6 +21,7 @@ class Item {
         this.currency = currency;
         this.createdTime = createdTime;
         this.isOnWishlist = isOnWishlist;
+        this.source = source;
         this.photos = photos;
     }
 }

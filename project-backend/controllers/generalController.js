@@ -15,12 +15,13 @@ export const fetchAllOffers = async (req, res) => {
          const queryParams = { query, wishlist, filtered };
 
         if (selectedPlatforms.includes('olx')) {
-            queries.push(fetchOlxOffers({ query: queryParams, json: false }));
+            queries.push(fetchOlxOffers({ query: queryParams }, { json: false }));
         }
 
         if (selectedPlatforms.includes('vinted')) {
-            queries.push(fetchVintedOffers({ query: queryParams, json: false }));
+            queries.push(fetchVintedOffers({ query: queryParams }, { json: false }));
         }
+
 
         const results = await Promise.all(queries);
         const combinedData = results.flat();

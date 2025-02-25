@@ -27,6 +27,7 @@ export const fetchVintedOffers = async (req, resOrOptions) => {
             vintedItem.photo.full_size_url || vintedItem.photo.url,
             ...(vintedItem.photo.thumbnails ? vintedItem.photo.thumbnails.map(thumbnail => thumbnail.url) : [])
           ] : [],
+        source: "vinted",
         category: '',
         isOnWishlist: isItemOnWishlist(vintedItem.itemTitle, vintedItem.description, vintedItem.category, wishlist),
       }));
