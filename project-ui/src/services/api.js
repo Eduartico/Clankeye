@@ -4,7 +4,7 @@ const API_BASE_URL = 'http://localhost:4000';
 
 export const fetchItems = async (query) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/offers`, {
+        const response = await axios.get(`${API_BASE_URL}/all-offers`, {
             params: query,
         });
         return response.data.data; 

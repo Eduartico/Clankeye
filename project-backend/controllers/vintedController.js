@@ -5,7 +5,7 @@ import {isItemOnWishlist, filterItems} from '../utils/itemUtils.js';
 export const fetchVintedOffers = async (req, resOrOptions) => {
   try {
       const queryParams = {
-          text: req.query.text || 'clone wars',
+          text: req.query.query || '',
           currency: req.query.currency || 'EUR',
           order: req.query.order || 'newest_first',
       };

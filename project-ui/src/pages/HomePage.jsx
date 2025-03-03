@@ -6,13 +6,14 @@ import { useQuery } from "../contexts/QueryContextType";
 
 export default function HomePage() {
   const [items, setItems] = useState([]);
-  const { query, setQuery } = useQuery();
+  const { query, queryVersion } = useQuery();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadItems = async () => {
+      console.log("fetching items")
       setLoading(true);
       try {
         setItems([]);
@@ -31,7 +32,7 @@ export default function HomePage() {
     }
 
     loadItems();
-  }, [query]);
+  }, [query, queryVersion]);
 
   return (
     <div className="w-full h-full flex flex-col relative dark:bg-zinc-900 py-5 gap-5 px-14">

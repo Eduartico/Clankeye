@@ -1,5 +1,5 @@
 import express from 'express';
-import { fetchOlxOffers } from './controllers/olxController.js';
+import { fetchOffers as fetchOlxOffers } from './controllers/olxController.js';
 import { fetchVintedOffers } from './controllers/vintedController.js';
 import { fetchAllOffers } from './controllers/generalController.js';
 

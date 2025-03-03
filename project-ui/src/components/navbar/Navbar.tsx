@@ -3,8 +3,8 @@
 import { useNavigate } from "react-router-dom";
 import Icon from "../../assets/stormtrooper.png";
 import ToggleDarkTheme from "../buttons/ToggleDarkTheme";
-import SearchBar from "../search/SearchBar";
 import { useQuery } from "../../contexts/QueryContextType";
+import SearchBar from "../search/SearchBar";
 
 export default function Navbar() {
   const { query, setQuery } = useQuery();
