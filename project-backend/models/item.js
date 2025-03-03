@@ -4,21 +4,25 @@ class Item {
         url,
         title,
         description,
+        category,
         price,
         currency,
         createdTime,
         isOnWishlist,
-        imgLink
+        source,
+        photos = []
     }) {
         this.id = id;
         this.url = url;
         this.title = title;
         this.description = description;
+        this.category = category;
         this.price = price;
         this.currency = currency;
         this.createdTime = createdTime;
         this.isOnWishlist = isOnWishlist;
-        this.imgLink = imgLink;
+        this.source = source;
+        this.photos = photos;
     }
 }
 

@@ -1,8 +1,8 @@
 import { fetchCookies, getWithCookies } from '../utils/httpClient.js';
 
-export const searchVintedItems = async (queryParams) => {
+export const fetchVintedOffersService = async (queryParams) => {
   try {
-    const cookies = await fetchCookies(); 
+    const cookies = await fetchCookies('https://www.vinted.fr'); 
     const response = await getWithCookies('https://www.vinted.fr/api/v2/catalog/items', cookies, {
       search_text: queryParams.text,
       currency: queryParams.currency,

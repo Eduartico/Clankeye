@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const BASE_URL = 'https://www.olx.pt/api/v1/offers/';
 
-export const fetchOlxOffers = async (queryParams) => {
+export const fetchOlxOffersService = async (queryParams) => {
     try {
         const response = await axios.get(BASE_URL, { params: queryParams });
         return response.data;
