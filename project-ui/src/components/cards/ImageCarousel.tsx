@@ -17,8 +17,6 @@ const preloadImages = (images: string[]) => {
 export default function ImageCarousel({ images }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  console.log(images);
-
   useEffect(() => {
     preloadImages(images);
   }, [images]);

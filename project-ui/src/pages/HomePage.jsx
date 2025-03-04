@@ -13,7 +13,6 @@ export default function HomePage() {
 
   useEffect(() => {
     const loadItems = async () => {
-      console.log("fetching items")
       setLoading(true);
       try {
         setItems([]);

@@ -21,7 +21,10 @@ export const fetchAllOffers = async (req, res) => {
         { query: queryParams },
         { json: false }
       );
-      queries.push(olxData);
+
+      if(olxData.error) return res.status(512).json({ success: false, error: "Error fetching OLX offers" });
+      
+      queries.push(olxData.items);
     }
 
     if (selectedPlatforms.includes("vinted")) {

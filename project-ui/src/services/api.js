@@ -1,15 +1,16 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = 'http://localhost:4000'; 
+const API_BASE_URL = "http://localhost:4000";
 
 export const fetchItems = async (query) => {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/all-offers`, {
-            params: query,
-        });
-        return response.data.data; 
-    } catch (error) {
-        console.error('Error fetching items:', error.message);
-        throw error;
-    }
+  try {
+    const response = await axios.get(`${API_BASE_URL}/all-offers`, {
+      params: query,
+    });
+    return response.data.data;
+  } catch (error) {
+    if(error.status === 512) return await fetchItems(query);
+    console.error("Error fetching items:", error.message);
+    throw error;
+  }
 };

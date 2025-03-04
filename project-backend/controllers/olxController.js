@@ -39,16 +39,16 @@ export const fetchOffers = async (req, res) => {
       });
     });
 
-    return items;
+    return { items, error: false };
   } catch (error) {
     console.error("Error fetching offers:", error.message);
-    return [];
+    return { items: [], error: true };
   }
 };
 
 const formatImgLink = (img) => {
   // delete everything after image;s= and add the width and height
-  
+
   let link = img.link.split("/").slice(0, -1).join("/");
   link += "/image;s=" + img.width + "x" + img.height;
   return link;
