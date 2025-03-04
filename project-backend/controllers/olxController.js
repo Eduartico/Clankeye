@@ -35,7 +35,7 @@ export const fetchOffers = async (req, res) => {
         currency: priceParam.currency ?? null,
         createdTime: offer.created_time,
         isOnWishlist: false, //todo: implement this feature // hell naww 😭
-        photos: images.length > 0 && images[0],
+        photos: images,
       });
     });
 
