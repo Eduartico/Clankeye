@@ -7,6 +7,66 @@ module.exports = {
         noto: ["Noto Sans", "sans-serif"],
       },
       colors: {
+        // Theme CSS variable colors
+        primary: {
+          50: "var(--color-primary-50, #eff6ff)",
+          100: "var(--color-primary-100, #dbeafe)",
+          200: "var(--color-primary-200, #bfdbfe)",
+          300: "var(--color-primary-300, #93c5fd)",
+          400: "var(--color-primary-400, #60a5fa)",
+          500: "var(--color-primary-500, #3b82f6)",
+          600: "var(--color-primary-600, #2563eb)",
+          700: "var(--color-primary-700, #1d4ed8)",
+          800: "var(--color-primary-800, #1e40af)",
+          900: "var(--color-primary-900, #1e3a8a)",
+          950: "var(--color-primary-950, #172554)",
+        },
+        secondary: {
+          50: "var(--color-secondary-50, #f8fafc)",
+          100: "var(--color-secondary-100, #f1f5f9)",
+          200: "var(--color-secondary-200, #e2e8f0)",
+          300: "var(--color-secondary-300, #cbd5e1)",
+          400: "var(--color-secondary-400, #94a3b8)",
+          500: "var(--color-secondary-500, #64748b)",
+          600: "var(--color-secondary-600, #475569)",
+          700: "var(--color-secondary-700, #334155)",
+          800: "var(--color-secondary-800, #1e293b)",
+          900: "var(--color-secondary-900, #0f172a)",
+          950: "var(--color-secondary-950, #020617)",
+        },
+        accent: {
+          50: "var(--color-accent-50, #fdf4ff)",
+          100: "var(--color-accent-100, #fae8ff)",
+          200: "var(--color-accent-200, #f5d0fe)",
+          300: "var(--color-accent-300, #f0abfc)",
+          400: "var(--color-accent-400, #e879f9)",
+          500: "var(--color-accent-500, #d946ef)",
+          600: "var(--color-accent-600, #c026d3)",
+          700: "var(--color-accent-700, #a21caf)",
+          800: "var(--color-accent-800, #86198f)",
+          900: "var(--color-accent-900, #701a75)",
+          950: "var(--color-accent-950, #4a044e)",
+        },
+        // Semantic background colors
+        background: {
+          default: "var(--color-background-default, #f8fafc)",
+          paper: "var(--color-background-paper, #ffffff)",
+          elevated: "var(--color-background-elevated, #f1f5f9)",
+        },
+        // Semantic text colors
+        text: {
+          primary: "var(--color-text-primary, #0f172a)",
+          secondary: "var(--color-text-secondary, #475569)",
+          disabled: "var(--color-text-disabled, #94a3b8)",
+          inverse: "var(--color-text-inverse, #f8fafc)",
+        },
+        // Semantic border colors
+        border: {
+          default: "var(--color-border-default, #e2e8f0)",
+          light: "var(--color-border-light, #f1f5f9)",
+          focus: "var(--color-border-focus, #3b82f6)",
+        },
+        // Legacy brand colors
         lochmara: {
           50: "#f2f8fd",
           100: "#e4effa",
