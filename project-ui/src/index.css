@@ -15,3 +15,75 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* ── Wishlist animated gradient outline ─────────────────────────── */
+@keyframes wishlist-border-spin {
+  0%   { --wishlist-angle: 0deg; }
+  100% { --wishlist-angle: 360deg; }
+}
+
+@property --wishlist-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.wishlist-glow {
+  position: relative;
+  /* Keep the card's own border + background completely intact */
+}
+
+/* Rainbow outline ring — sits OUTSIDE the card as a visible outline */
+.wishlist-glow::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 3px;
+  background: conic-gradient(
+    from var(--wishlist-angle, 0deg),
+    #f59e0b,
+    #ef4444,
+    #ec4899,
+    #8b5cf6,
+    #3b82f6,
+    #10b981,
+    #f59e0b
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: wishlist-border-spin 30s linear infinite;
+  pointer-events: none;
+}
+
+/* Soft outer glow (blur) */
+.wishlist-glow::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  z-index: -2;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--wishlist-angle, 0deg),
+    #f59e0b,
+    #ef4444,
+    #ec4899,
+    #8b5cf6,
+    #3b82f6,
+    #10b981,
+    #f59e0b
+  );
+  animation: wishlist-border-spin 30s linear infinite;
+  filter: blur(12px);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Hover lift on wishlisted cards */
+.wishlist-glow:hover {
+  box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.3);
+}

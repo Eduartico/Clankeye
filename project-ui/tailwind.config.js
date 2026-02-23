@@ -9,17 +9,17 @@ module.exports = {
       colors: {
         // Theme CSS variable colors
         primary: {
-          50: "var(--color-primary-50, #eff6ff)",
-          100: "var(--color-primary-100, #dbeafe)",
-          200: "var(--color-primary-200, #bfdbfe)",
-          300: "var(--color-primary-300, #93c5fd)",
-          400: "var(--color-primary-400, #60a5fa)",
-          500: "var(--color-primary-500, #3b82f6)",
-          600: "var(--color-primary-600, #2563eb)",
-          700: "var(--color-primary-700, #1d4ed8)",
-          800: "var(--color-primary-800, #1e40af)",
-          900: "var(--color-primary-900, #1e3a8a)",
-          950: "var(--color-primary-950, #172554)",
+          50: "var(--color-primary-50, #fff7ed)",
+          100: "var(--color-primary-100, #ffedd5)",
+          200: "var(--color-primary-200, #fed7aa)",
+          300: "var(--color-primary-300, #fdba74)",
+          400: "var(--color-primary-400, #fb923c)",
+          500: "var(--color-primary-500, #f97316)",
+          600: "var(--color-primary-600, #ea580c)",
+          700: "var(--color-primary-700, #c2410c)",
+          800: "var(--color-primary-800, #9a3412)",
+          900: "var(--color-primary-900, #7c2d12)",
+          950: "var(--color-primary-950, #431407)",
         },
         secondary: {
           50: "var(--color-secondary-50, #f8fafc)",
@@ -64,7 +64,7 @@ module.exports = {
         border: {
           default: "var(--color-border-default, #e2e8f0)",
           light: "var(--color-border-light, #f1f5f9)",
-          focus: "var(--color-border-focus, #3b82f6)",
+          focus: "var(--color-border-focus, #f97316)",
         },
         // Legacy brand colors
         lochmara: {

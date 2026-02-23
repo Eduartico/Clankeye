@@ -13,7 +13,7 @@ export default function SearchBar({ setQuery }: SearchBarProps) {
 
   return (
     <form
-      className="flex items-center gap-x-4"
+      className="flex items-center gap-x-3 flex-1 max-w-2xl mx-4"
       onSubmit={(e) => handleSearch(e)}
     >
       <input
@@ -22,11 +22,11 @@ export default function SearchBar({ setQuery }: SearchBarProps) {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="What are you looking for?"
-        className="min-w-52 cl:min-w-96 h-10 p-2 dark:text-white dark:bg-zinc-900 ring-2 outline-none ring-gray-300 dark:ring-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-thunderbird-400 transition ease-in-out duration-200"
+        className="flex-1 h-12 px-4 text-base text-white bg-zinc-900 dark:bg-zinc-950 ring-2 outline-none ring-zinc-700 dark:ring-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition ease-in-out duration-200 placeholder-zinc-500"
       />
       <button
         type="submit"
-        className="h-11 bg-zinc-800 hover:bg-thunderbird-500 text-white py-2 px-4 rounded-md transition ease-in-out duration-200 focus:ring-4 focus:outline-none focus:ring-thunderbird-700"
+        className="h-12 bg-primary-600 hover:bg-primary-500 text-white py-2 px-6 rounded-lg font-semibold transition ease-in-out duration-200 focus:ring-4 focus:outline-none focus:ring-primary-700 whitespace-nowrap"
       >
         Search
       </button>

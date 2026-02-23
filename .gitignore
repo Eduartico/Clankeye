@@ -5,3 +5,8 @@
 /project-ui/package-lock.json
 project-backend/package-lock.json
 project-backend/swagger-output.json
+/project-backend/data/dumps
+*.log
+project-backend/data/filter.json
+project-backend/data/wishlist.json
+project-backend/crawl-results.json

@@ -10,7 +10,7 @@ export default function SelectedItem({ item }: SelectedItemProps) {
       </h1>
       <button
         onClick={() => item.remove()}
-        className=" flex items-center justify-center rounded-full p-1 font-bold text-slate-700 dark:text-white hover:text-thunderbird-600 hover:bg-zinc-300  dark:hover:text-slate-50 dark:hover:bg-slate-200 dark:hover:bg-opacity-50 transition ease-in-out duration-200"
+        className=" flex items-center justify-center rounded-full p-1 font-bold text-slate-700 dark:text-white hover:text-primary-600 hover:bg-zinc-300  dark:hover:text-slate-50 dark:hover:bg-slate-200 dark:hover:bg-opacity-50 transition ease-in-out duration-200"
       >
         {item.icon}
       </button>

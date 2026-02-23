@@ -9,10 +9,10 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="h-screen flex flex-col font-noto">
+    <div className="h-screen flex flex-col font-noto bg-background-default">
       <ThemeProvider>
         <Navbar />
-        <main className="flex-grow">{children}</main>
+        <main className="flex-grow flex overflow-hidden">{children}</main>
         <Footer />
       </ThemeProvider>
     </div>
