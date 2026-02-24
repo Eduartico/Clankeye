@@ -1,5 +1,5 @@
 ﻿import BaseScraper from '../BaseScraper.js';
-import { chromium } from 'playwright';
+import browserManager from '../BrowserManager.js';
 
 const VINTED_TIMEOUT_MS = parseInt(process.env.SCRAPER_TIMEOUT_SECS || '120', 10) * 1000;
 
@@ -18,8 +18,10 @@ class VintedScraper extends BaseScraper {
 
   buildSearchUrl(searchTerm, page = 1) {
     // Kept for interface compatibility — actual navigation is in search()
-    let url = `${this.domain}/catalog?search_text=${encodeURIComponent(searchTerm)}`;
+    // order=newest_first sorts by most recent; time= prevents cached results
+    let url = `${this.domain}/catalog?search_text=${encodeURIComponent(searchTerm)}&order=newest_first`;
     if (page > 1) url += `&page=${page}`;
+    url += `&time=${Math.floor(Date.now() / 1000)}`;
     return url;
   }
 
@@ -33,28 +35,19 @@ class VintedScraper extends BaseScraper {
     this.log(`Starting search for "${searchTerm}" (page ${page})`);
     this.log(`Timeout: ${VINTED_TIMEOUT_MS / 1000}s`);
 
-    const browser = await chromium.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-      ],
+    const context = await browserManager.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      locale: 'fr-FR',
+      viewport: { width: 1280, height: 800 },
+      extraHTTPHeaders: { 'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8' },
     });
 
     const killTimer = setTimeout(() => {
-      this.log('Hard timeout — closing browser', 'warn');
-      browser.close().catch(() => {});
+      this.log('Hard timeout — closing context', 'warn');
+      browserManager.closeContext(context).catch(() => {});
     }, VINTED_TIMEOUT_MS);
 
     try {
-      const context = await browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        locale: 'fr-FR',
-        viewport: { width: 1280, height: 800 },
-        extraHTTPHeaders: { 'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8' },
-      });
-
       const browserPage = await context.newPage();
 
       // Hide automation signals
@@ -80,7 +73,8 @@ class VintedScraper extends BaseScraper {
 
       // Step 2: Call the Vinted catalog API from inside the browser
       // This request carries the same cookies as a real user's XHR
-      const apiUrl = `${this.domain}/api/v2/catalog/items?search_text=${encodeURIComponent(searchTerm)}&per_page=96&page=${page}&order=relevance_score`;
+      // order=newest_first sorts by most recently listed
+      const apiUrl = `${this.domain}/api/v2/catalog/items?search_text=${encodeURIComponent(searchTerm)}&per_page=96&page=${page}&order=newest_first&time=${Math.floor(Date.now() / 1000)}`;
       this.log(`Calling API: ${apiUrl}`);
 
       const data = await browserPage.evaluate(async (url) => {
@@ -117,9 +111,16 @@ class VintedScraper extends BaseScraper {
               : `${this.domain}/items/${item.id}`,
             image: (item.photos && item.photos[0])
               ? (item.photos[0].url || item.photos[0].full_size_url || '')
-              : '',
+              : (item.photo ? (item.photo.url || item.photo.full_size_url || '') : ''),
             brand: item.brand_title || '',
             size: item.size_title || '',
+            date: item.created_at_ts
+              ? new Date(item.created_at_ts * 1000).toISOString()
+              : (item.created_at || ''),
+            createdTime: item.created_at_ts
+              ? new Date(item.created_at_ts * 1000).toISOString()
+              : (item.created_at || ''),
+            source: 'vinted',
           }));
 
         // Log first 3 as preview
@@ -135,7 +136,7 @@ class VintedScraper extends BaseScraper {
       this.log(`Crawler stopped: ${error.message}`, 'error');
     } finally {
       clearTimeout(killTimer);
-      await browser.close().catch(() => {});
+      await browserManager.closeContext(context);
     }
 
     this.log(`Done — ${this.results.length} items found.`);

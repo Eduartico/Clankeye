@@ -14,6 +14,7 @@
 
 import { log, LogLevel } from 'crawlee';
 import { createScraper, getScraperNames } from '../scrapers/index.js';
+import browserManager from '../scrapers/BrowserManager.js';
 
 // ─── Configuration ───────────────────────────────────────────────
 const SEARCH_TERM = process.argv[2] || 'clone wars';
@@ -173,4 +174,8 @@ const output = {
 
 writeFileSync(outputPath, JSON.stringify(output, null, 2));
 console.log(`\n💾 Full results saved to: ${outputPath}`);
+
+// Shut down the shared browser (frees Chromium process for CLI runs)
+await browserManager.shutdown();
+
 console.log('\nDone! 🎉');

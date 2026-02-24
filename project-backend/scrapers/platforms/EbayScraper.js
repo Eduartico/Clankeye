@@ -11,7 +11,8 @@ class EbayScraper extends BaseScraper {
   }
 
   buildSearchUrl(searchTerm, page = 1) {
-    let url = `${this.domain}/sch/i.html?_nkw=${encodeURIComponent(searchTerm)}&_sacat=0`;
+    // _sop=10 sorts by "Newly listed" (most recent first)
+    let url = `${this.domain}/sch/i.html?_nkw=${encodeURIComponent(searchTerm)}&_sacat=0&_from=R40&_sop=10`;
     if (page > 1) url += `&_pgn=${page}`;
     return url;
   }
@@ -73,7 +74,18 @@ class EbayScraper extends BaseScraper {
           const titleEl = card.querySelector('.s-card__title span[role="heading"]') 
             || card.querySelector('.s-card__title') 
             || card.querySelector('.s-item__title span');
-          const title = titleEl?.innerText?.trim() || '';
+          let title = titleEl?.innerText?.trim() || '';
+          
+          // Clean title: remove trailing translated UI text like "Abre em janela ou guia separada",
+          // "Opens in a new window or tab", etc.
+          const uiTextPatterns = [
+            /\s*(Abre em janela ou guia separada|Opens in a new window or tab|Ouvre dans une nouvelle fenêtre ou un nouvel onglet|Se abre en una nueva ventana o pestaña|Öffnet in einem neuen Fenster oder Tab|Apre in una nuova finestra o scheda|Otwiera się w nowym oknie lub karcie)\s*$/i,
+            /\s*Brand New\s*$/i,
+            /\s*Pre-Owned\s*$/i,
+          ];
+          for (const pattern of uiTextPatterns) {
+            title = title.replace(pattern, '').trim();
+          }
           
           // Skip placeholder items
           if (!title || title.toLowerCase().includes('shop on ebay') || title.toLowerCase().includes('resultados correspondentes')) return;
@@ -88,6 +100,10 @@ class EbayScraper extends BaseScraper {
           const locationEl = card.querySelector('.s-card__location, .s-item__location, .s-item__itemLocation');
           const listingId = card.getAttribute('data-listingid') || '';
 
+          // Extract date — eBay shows listing dates in various formats
+          const dateEl = card.querySelector('.s-card__listingDate, .s-item__listingDate, [class*="listingDate"], [class*="endDate"]');
+          const date = dateEl?.innerText?.trim() || '';
+
           results.push({
             title,
             price: priceEl?.innerText?.trim() || '',
@@ -96,8 +112,9 @@ class EbayScraper extends BaseScraper {
             condition: conditionEl?.innerText?.trim() || '',
             shipping: shippingEl?.innerText?.trim() || '',
             location: locationEl?.innerText?.trim() || '',
+            date,
             listingId,
-            rawHtml: card.outerHTML.substring(0, 400),
+            source: 'ebay',
           });
         } catch (e) { /* skip */ }
       });

@@ -12,12 +12,26 @@ class OlxPtScraper extends BaseScraper {
   buildSearchUrl(searchTerm, page = 1) {
     const encoded = encodeURIComponent(searchTerm).replace(/%20/g, '-');
     let url = `https://www.olx.pt/ads/q-${encoded}/`;
-    if (page > 1) url += `?page=${page}`;
+    // Add sort by most recent and pagination
+    const params = [];
+    if (page > 1) params.push(`page=${page}`);
+    params.push('search%5Border%5D=created_at%3Adesc');
+    if (params.length > 0) url += `?${params.join('&')}`;
     return url;
   }
 
   async extractItems(page, searchTerm) {
     this.log('🔎 Looking for OLX PT listing elements...');
+
+    // Scroll down to trigger lazy-loading of images
+    await page.evaluate(async () => {
+      for (let i = 0; i < 5; i++) {
+        window.scrollBy(0, 800);
+        await new Promise(r => setTimeout(r, 300));
+      }
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(1000);
 
     // Log all potential listing containers
     const containers = await page.evaluate(() => {
@@ -56,29 +70,37 @@ class OlxPtScraper extends BaseScraper {
       const results = [];
 
       function extractImage(card) {
-        // Try standard img element with all possible lazy-load attributes
-        const imgEl = card.querySelector('img');
-        if (imgEl) {
-          const src = imgEl.src || imgEl.getAttribute('data-src') || imgEl.getAttribute('data-lazy') || imgEl.getAttribute('data-original') || imgEl.getAttribute('data-lazy-src') || '';
-          // Check srcset for higher quality
+        // Skip known OLX placeholder / no-thumbnail images
+        const SKIP_IMG = /no_thumbnail|placeholder|spacer\.gif|data:image|static\/media\/no_/i;
+
+        // Try all img elements within the card (not just the first)
+        const imgEls = card.querySelectorAll('img');
+        for (const imgEl of imgEls) {
+          // Check srcset first for best quality
           const srcset = imgEl.getAttribute('srcset') || imgEl.getAttribute('data-srcset') || '';
           if (srcset) {
             const parts = srcset.split(',').map(s => s.trim().split(/\s+/)[0]).filter(Boolean);
-            if (parts.length > 0) return parts[parts.length - 1]; // highest resolution
+            const best = parts[parts.length - 1];
+            if (best && !SKIP_IMG.test(best)) return best;
           }
-          if (src && !src.includes('data:image') && !src.includes('placeholder')) return src;
+          // Try all possible source attributes
+          const src = imgEl.src || imgEl.getAttribute('data-src') || imgEl.getAttribute('data-lazy') || imgEl.getAttribute('data-original') || imgEl.getAttribute('data-lazy-src') || imgEl.getAttribute('data-preload') || '';
+          if (src && !SKIP_IMG.test(src) && src.length > 10) return src;
         }
         // Try <picture> element
         const picture = card.querySelector('picture source');
         if (picture) {
           const srcset = picture.getAttribute('srcset') || '';
-          if (srcset) return srcset.split(',')[0].trim().split(/\s+/)[0];
+          if (srcset) {
+            const url = srcset.split(',')[0].trim().split(/\s+/)[0];
+            if (url && !SKIP_IMG.test(url)) return url;
+          }
         }
         // Try background-image in style
         const bgEl = card.querySelector('[style*="background-image"]');
         if (bgEl) {
           const match = bgEl.style.backgroundImage.match(/url\(["']?([^"')]+)["']?\)/);
-          if (match) return match[1];
+          if (match && !SKIP_IMG.test(match[1])) return match[1];
         }
         return '';
       }
@@ -96,15 +118,32 @@ class OlxPtScraper extends BaseScraper {
           const image = extractImage(card);
 
           const title = titleEl?.innerText?.trim() || link?.innerText?.substring(0, 100)?.trim() || '';
-          // Skip items without image (OLX doesn't support imageless listings)
-          if (!image || !title) return;
+          if (!title) return;
+
+          // Extract date from location-date element (often "City - Today 14:23" or "City - 22 Feb")
+          let date = '';
+          const locText = locationEl?.innerText?.trim() || '';
+          // Try to extract date portion after the dash separator
+          const dashParts = locText.split(/\s*[-–—]\s*/);
+          if (dashParts.length >= 2) {
+            // The date is usually after the last dash
+            const datePart = dashParts[dashParts.length - 1].trim();
+            if (datePart) date = datePart;
+          }
+          // Fallback: regex match for common patterns
+          if (!date) {
+            const dateMatch = locText.match(/(Hoje\s*(?:às\s*\d{1,2}:\d{2})?|Ontem\s*(?:às\s*\d{1,2}:\d{2})?|Para o topo a\s+\d{1,2}\s+de\s+\w+\s+de\s+\d{4}|\d{1,2}\s+de\s+\w+\s+de\s+\d{4}|\d{1,2}\s+\w{3}\.?\s+\d{4}|\d{1,2}\s+\w{3}\.?(?:\s+\d{2}:\d{2})?)/i);
+            if (dateMatch) date = dateMatch[1];
+          }
 
           results.push({
             title,
             price: priceEl?.innerText?.trim() || '',
             url: link?.href || '',
             image,
-            location: locationEl?.innerText?.trim() || '',
+            location: locText,
+            date,
+            source: 'olx-pt',
           });
         } catch (e) {
           // skip

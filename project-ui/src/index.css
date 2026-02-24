@@ -2,88 +2,470 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Liquid Glass Design System — Clankeye
+   Built on shadcn/ui (Radix + Tailwind) with glass/liquid surface layers.
+
+   Colour pipeline
+   ───────────────
+   ThemeContext  →  CSS custom properties  →  Tailwind theme  →  components
+     --color-primary          H S L   (HSL triplet, no commas)
+     --color-primary-light    H S L
+     --color-primary-dark     H S L
+     --color-primary-rgb      R, G, B (for rgba() usage in glass surfaces)
+
+   Primary colour is an ACCENT, never a surface fill.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── shadcn/ui base tokens ───────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* ─ shadcn semantic HSL tokens (light) ─ */
+    --background: 210 40% 98%;
+    --foreground: 222 84% 5%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 84% 5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 84% 5%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 25 95% 53%;         /* matches primary (orange) focus ring */
+    --radius: 0.75rem;
+
+    /* ─ Glass primary HSL tokens (set dynamically by ThemeContext) ─ */
+    --color-primary: 25 95% 53%;
+    --color-primary-light: 25 100% 65%;
+    --color-primary-dark: 25 100% 41%;
+    --color-primary-rgb: 249, 115, 22;
+    --color-primary-light-rgb: 251, 147, 60;
+    --color-primary-dark-rgb: 209, 85, 10;
+  }
+
+  .dark {
+    --background: 222 84% 5%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary-foreground: 222 84% 5%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 25 95% 53%;
+  }
+
+  * {
+    @apply border-border;
+  }
+}
+
+/* ── Base resets ──────────────────────────────────────────────────────── */
+html.dark {
+  color-scheme: dark;
+}
+html:not(.dark) {
+  color-scheme: light;
+}
+
+input,
+textarea,
+select {
+  color: inherit;
+  background-color: inherit;
+}
+
+/* Base page background — Aurora renders on top of this.
+   Dark mode: deep navy. Light mode: near-white.
+   These are the "floor" colours; Aurora tints them with animated gradients. */
+html:not(.dark) body {
+  background: hsl(212 40% 96%);
+}
+html.dark body {
+  background: hsl(222 36% 10%);
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+    "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
 }
 
-/* ── Wishlist animated gradient outline ─────────────────────────── */
-@keyframes wishlist-border-spin {
-  0%   { --wishlist-angle: 0deg; }
-  100% { --wishlist-angle: 360deg; }
+/* ═══════════════════════════════════════════════════════════════════════
+   Layer 1 — Glass surface utilities (kept for backward compatibility)
+   These are used by legacy code; new components should use shadcn/ui
+   primitives wrapped with glass variants (GlassCard, GlassButton, etc.)
+   ═══════════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* ── Layer 1: base glass surface ───────────────────────────────────── */
+  .glass-surface {
+    border-radius: 20px;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  html:not(.dark) .glass-surface {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      0 8px 32px rgba(0, 0, 0, 0.08);
+  }
+  html.dark .glass-surface {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  .glass-surface-light {
+    border-radius: 20px;
+  }
+  html:not(.dark) .glass-surface-light {
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  html.dark .glass-surface-light {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* ── Primary accent glow (Layer 2 highlight) ───────────────────────── */
+  .glow-primary {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 0 40px rgba(var(--color-primary-rgb, 249, 115, 22), 0.25),
+      0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+  html.dark .glow-primary {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 0 40px rgba(var(--color-primary-rgb, 249, 115, 22), 0.25),
+      0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  /* ── Glass button base (legacy — prefer GlassButton component) ──── */
+  .glass-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(12px) saturate(130%);
+    -webkit-backdrop-filter: blur(12px) saturate(130%);
+    border: 1px solid transparent;
+    outline: none;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .glass-btn:focus-visible {
+    outline: 2px solid hsl(var(--color-primary));
+    outline-offset: 2px;
+  }
+  .glass-btn:active {
+    transform: scale(0.98);
+  }
+
+  .glass-btn-primary {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--color-primary)),
+      hsl(var(--color-primary-light))
+    );
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 4px 16px rgba(var(--color-primary-rgb, 249, 115, 22), 0.3);
+  }
+  .glass-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 6px 24px rgba(var(--color-primary-rgb, 249, 115, 22), 0.45);
+    filter: brightness(1.08);
+  }
+
+  .glass-btn-ghost {
+    color: var(--color-text-primary, #0f172a);
+  }
+  html:not(.dark) .glass-btn-ghost {
+    background: rgba(255, 255, 255, 0.5);
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+  html.dark .glass-btn-ghost {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--color-text-primary, #f8fafc);
+  }
+  .glass-btn-ghost:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 0 16px rgba(var(--color-primary-rgb, 249, 115, 22), 0.15),
+      0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .glass-btn-outline {
+    background: transparent;
+    color: hsl(var(--color-primary));
+    border-color: hsl(var(--color-primary));
+  }
+  .glass-btn-outline:hover {
+    background: rgba(var(--color-primary-rgb, 249, 115, 22), 0.1);
+    transform: translateY(-1px);
+  }
+
+  /* glass-navbar removed — use <GlassPanel intensity="medium"> */
+
+  /* ── Glass overlay + modal ─────────────────────────────────────────── */
+  .glass-overlay {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .glass-modal {
+    backdrop-filter: blur(30px) saturate(150%);
+    -webkit-backdrop-filter: blur(30px) saturate(150%);
+    border-radius: 24px;
+    animation: glass-modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  html:not(.dark) .glass-modal {
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      0 24px 80px rgba(0, 0, 0, 0.18);
+  }
+  html.dark .glass-modal {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 24px 80px rgba(0, 0, 0, 0.5);
+  }
+
+  @keyframes glass-modal-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  /* glass-card removed — use <GlassCard variant="surface"> */
+
+  /* glass-sidebar removed — sidebar uses <GlassSurface> as absolute background */
+
+  /* ── Glass input ───────────────────────────────────────────────────── */
+  .glass-input {
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+    border-radius: 14px;
+    transition: all 0.25s ease;
+    outline: none;
+  }
+  html:not(.dark) .glass-input {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    color: var(--color-text-primary, #0f172a);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+  html.dark .glass-input {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    color: var(--color-text-primary, #f8fafc);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  .glass-input:focus {
+    border-color: hsl(var(--color-primary));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 0 0 3px rgba(var(--color-primary-rgb, 249, 115, 22), 0.15);
+  }
+  .glass-input::placeholder {
+    color: var(--color-text-disabled, #94a3b8);
+  }
+
+  /* ── Glass chip / pill ─────────────────────────────────────────────── */
+  .glass-chip {
+    border-radius: 9999px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+  }
+  html:not(.dark) .glass-chip {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  html.dark .glass-chip {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .glass-chip:hover {
+    box-shadow: 0 2px 8px rgba(var(--color-primary-rgb, 249, 115, 22), 0.12);
+  }
+
+  /* ── Glass dropdown ────────────────────────────────────────────────── */
+  .glass-dropdown {
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border-radius: 20px;
+    animation: glass-modal-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  html:not(.dark) .glass-dropdown {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      0 12px 48px rgba(0, 0, 0, 0.12);
+  }
+  html.dark .glass-dropdown {
+    background: rgba(30, 41, 59, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 12px 48px rgba(0, 0, 0, 0.45);
+  }
+
+  /* glass-footer removed — use <GlassPanel intensity="subtle"> */
 }
 
-@property --wishlist-angle {
-  syntax: '<angle>';
+/* ── Minimal liquid glass scrollbar ─────────────────────────────── */
+.glass-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--color-primary-rgb, 249, 115, 22), 0.42) transparent;
+}
+
+.glass-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.glass-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.glass-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(var(--color-primary-rgb, 249, 115, 22), 0.52),
+    rgba(var(--color-primary-rgb, 249, 115, 22), 0.28)
+  );
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.glass-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(var(--color-primary-rgb, 249, 115, 22), 0.66),
+    rgba(var(--color-primary-rgb, 249, 115, 22), 0.36)
+  );
+}
+
+/* ── Readable liquid-glass text ─────────────────────────────────── */
+.glass-text {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow:
+    0 1px 1px rgba(15, 23, 42, 0.45),
+    0 0 16px rgba(var(--color-primary-rgb, 249, 115, 22), 0.2);
+}
+
+html:not(.dark) .glass-text {
+  color: rgba(15, 23, 42, 0.9);
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.7),
+    0 0 14px rgba(var(--color-primary-rgb, 249, 115, 22), 0.12);
+}
+
+/* ── Wishlist golden border — slow rotating shimmer ─────────────────── */
+@property --border-angle {
+  syntax: "<angle>";
   initial-value: 0deg;
   inherits: false;
 }
 
-.wishlist-glow {
-  position: relative;
-  /* Keep the card's own border + background completely intact */
+@keyframes wishlist-gold-spin {
+  to {
+    --border-angle: 360deg;
+  }
 }
 
-/* Rainbow outline ring — sits OUTSIDE the card as a visible outline */
+.wishlist-glow {
+  position: relative;
+}
+
 .wishlist-glow::before {
-  content: '';
+  content: "";
   position: absolute;
-  inset: -5px;
-  z-index: -1;
-  border-radius: inherit;
+  inset: -3px;
   padding: 3px;
+  border-radius: 27px;
   background: conic-gradient(
-    from var(--wishlist-angle, 0deg),
-    #f59e0b,
-    #ef4444,
-    #ec4899,
-    #8b5cf6,
-    #3b82f6,
-    #10b981,
-    #f59e0b
+    from var(--border-angle),
+    #3d2200 0%,
+    #b8860b 20%,
+    #ffd700 40%,
+    #fff8b0 50%,
+    #ffd700 60%,
+    #b8860b 80%,
+    #3d2200 100%
   );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
+  -webkit-mask: linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  animation: wishlist-border-spin 30s linear infinite;
   pointer-events: none;
+  z-index: 2;
+  animation: wishlist-gold-spin 4s linear infinite;
 }
 
-/* Soft outer glow (blur) */
 .wishlist-glow::after {
-  content: '';
+  content: "";
   position: absolute;
-  inset: -8px;
-  z-index: -2;
-  border-radius: inherit;
-  background: conic-gradient(
-    from var(--wishlist-angle, 0deg),
-    #f59e0b,
-    #ef4444,
-    #ec4899,
-    #8b5cf6,
-    #3b82f6,
-    #10b981,
-    #f59e0b
-  );
-  animation: wishlist-border-spin 30s linear infinite;
-  filter: blur(12px);
-  opacity: 0.3;
+  inset: -7px;
+  border-radius: 31px;
+  background: conic-gradient(from var(--border-angle), #b8860b, #ffd700, #b8860b);
+  filter: blur(10px);
+  opacity: 0.38;
   pointer-events: none;
+  z-index: -1;
+  animation: wishlist-gold-spin 4s linear infinite;
 }
 
-/* Hover lift on wishlisted cards */
-.wishlist-glow:hover {
-  box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.3);
+/* ── Aurora canvas container ─────────────────────────────────────────── */
+.aurora-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }

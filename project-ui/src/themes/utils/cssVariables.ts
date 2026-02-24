@@ -1,7 +1,21 @@
 import { ThemeColors, ColorScale } from '../types';
+import { derivePrimaryVariants, hexToRgbString, hexToHsl } from './colorUtils';
 
 /**
- * Generate CSS custom properties from theme colors
+ * Convert a hex colour to an HSL triplet string usable by Tailwind's
+ * hsl() alpha syntax:  "25 95% 53%"  (no commas, no parens).
+ */
+function hexToHslString(hex: string): string {
+  const hsl = hexToHsl(hex);
+  if (!hsl) return '0 0% 0%';
+  return `${Math.round(hsl.h)} ${Math.round(hsl.s)}% ${Math.round(hsl.l)}%`;
+}
+
+/**
+ * Generate CSS custom properties from theme colors.
+ * Emits both the legacy hex/rgb variables and the new shadcn-compatible
+ * HSL triplet variables so Tailwind `hsl(var(--color-primary) / <alpha>)`
+ * works.
  */
 export function generateCSSVariables(
   colors: Partial<ThemeColors>,
@@ -55,6 +69,23 @@ export function generateCSSVariables(
 
   // Add mode indicator
   vars['--theme-mode'] = mode;
+
+  // ── Derived primary color variants ──────────────────────────────────
+  const basePrimary = colors.primary?.[500] || '#f97316';
+  const { primary, primaryLight, primaryDark } = derivePrimaryVariants(basePrimary);
+
+  // HSL triplet format for Tailwind / shadcn  (e.g. "25 95% 53%")
+  vars['--color-primary'] = hexToHslString(primary);
+  vars['--color-primary-light'] = hexToHslString(primaryLight);
+  vars['--color-primary-dark'] = hexToHslString(primaryDark);
+
+  // RGB comma format for rgba() usage in glass surfaces
+  vars['--color-primary-rgb'] = hexToRgbString(primary);
+  vars['--color-primary-light-rgb'] = hexToRgbString(primaryLight);
+  vars['--color-primary-dark-rgb'] = hexToRgbString(primaryDark);
+
+  // shadcn semantic token: --ring matches primary for focus rings
+  vars['--ring'] = hexToHslString(primary);
 
   return vars;
 }

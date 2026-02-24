@@ -114,7 +114,7 @@ export const midnightTheme: Theme = {
       text: {
         primary: '#f3e8ff',
         secondary: '#c084fc',
-        disabled: '#581c87',
+        disabled: '#a78bfa',
         inverse: '#0f0a1a',
       },
       border: {

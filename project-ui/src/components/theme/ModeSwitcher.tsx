@@ -25,17 +25,17 @@ export function ModeSwitcher({ className = '', showLabel = true }: ModeSwitcherP
           Mode
         </label>
       )}
-      <div className="flex rounded-lg border border-border-default overflow-hidden">
+      <div className="flex rounded-2xl overflow-hidden glass-surface-light">
         {modes.map((m) => (
           <button
             key={m.value}
             onClick={() => setMode(m.value)}
             className={`
-              flex-1 py-2 px-3 text-sm font-medium transition-colors
+              flex-1 py-2 px-3 text-sm font-medium transition-all
               flex items-center justify-center gap-1
               ${config.mode === m.value
-                ? 'bg-primary-500 text-white'
-                : 'bg-background-paper text-text-secondary hover:bg-background-elevated'
+                ? 'glass-btn-primary rounded-xl !border-transparent'
+                : 'text-text-secondary hover:text-text-primary'
               }
             `}
             title={m.value === 'system' ? `Current: ${mode}` : undefined}

@@ -38,12 +38,12 @@ interface TermChipProps {
 function TermChip({ term, count, variant, onRemove }: TermChipProps) {
   const colors =
     variant === "wishlist"
-      ? "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700"
-      : "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700";
+      ? "!border-amber-400/40 text-amber-700 dark:text-amber-300"
+      : "!border-red-400/40 text-red-700 dark:text-red-300";
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colors} transition-all`}
+      className={`glass-chip inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium ${colors} transition-all`}
     >
       {variant === "wishlist" ? (
         <StarIcon className="w-3 h-3 text-amber-500" />
@@ -99,12 +99,12 @@ function AddTermInput({ placeholder, onAdd }: AddTermInputProps) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 min-w-0 px-2 py-1 text-xs rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+        className="glass-input flex-1 min-w-0 px-2 py-1 text-xs !rounded-lg"
       />
       <button
         type="submit"
         disabled={!value.trim()}
-        className="px-2 py-1 text-xs font-medium rounded-lg bg-primary-500 text-white disabled:bg-gray-300 dark:disabled:bg-zinc-600 hover:bg-primary-600 transition-colors"
+        className="glass-btn glass-btn-primary px-2 py-1 text-xs !rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
       >
         +
       </button>

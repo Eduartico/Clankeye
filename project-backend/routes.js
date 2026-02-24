@@ -24,6 +24,9 @@ router.post('/crawl/search', crawlController.crawlSearch);
 // Parallel search (GET for browser testing)
 router.get('/crawl/search', crawlController.crawlSearchGet);
 
+// SSE streaming search — streams per-platform results as they arrive
+router.get('/crawl/search-stream', crawlController.crawlSearchStream);
+
 // "Get more items" - paginated fetching for specific platforms
 router.post('/crawl/more', crawlController.crawlMore);
 

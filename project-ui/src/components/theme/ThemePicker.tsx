@@ -26,12 +26,13 @@ export function ThemePicker({ className = '', showLabels = true }: ThemePickerPr
             key={t.id}
             onClick={() => setTheme(t.id)}
             className={`
-              p-3 rounded-lg border-2 transition-all
+              p-3 rounded-2xl transition-all
               flex flex-col items-center gap-1
               hover:scale-105
+              glass-surface-light
               ${theme.id === t.id 
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' 
-                : 'border-border-default hover:border-primary-300 dark:hover:border-primary-700'
+                ? 'glow-primary !border-primary-500' 
+                : 'hover:!border-primary-300 dark:hover:!border-primary-700'
               }
             `}
             title={t.description}

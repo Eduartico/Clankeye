@@ -114,7 +114,7 @@ export const forestTheme: Theme = {
       text: {
         primary: '#f0fdf4',
         secondary: '#86efac',
-        disabled: '#15803d',
+        disabled: '#4ade80',
         inverse: '#052e16',
       },
       border: {

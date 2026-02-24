@@ -1,5 +1,5 @@
-import { PlaywrightCrawler, RequestList, log } from 'crawlee';
-import { randomUUID } from 'crypto';
+import { log } from 'crawlee';
+import browserManager from './BrowserManager.js';
 
 /**
  * Base class for all Crawlee-based platform scrapers.
@@ -225,7 +225,12 @@ class BaseScraper {
   }
 
   /**
-   * Main search method - runs the Crawlee crawler with a hard timeout.
+   * Main search method — opens a page in the shared browser and extracts items.
+   *
+   * Uses BrowserManager's shared Chromium process instead of launching a
+   * separate browser per scraper. Each call gets its own isolated context
+   * (like an incognito window) for cookie/storage isolation.
+   *
    * @param {string} searchTerm
    * @param {number} page - Page number (1-indexed)
    * @returns {Promise<Array>} Extracted items
@@ -237,76 +242,9 @@ class BaseScraper {
     this.log(`🌐 URL: ${url}`);
     this.log(`⏱️  Timeout: ${SCRAPER_TIMEOUT_MS / 1000}s`);
 
-    const scraper = this;
+    let context = null;
 
-    // Use a named RequestList (in-memory, no persistence) to avoid
-    // Crawlee's default RequestQueue deduplication across crawler instances.
-    const crawlerId = `${this.platformName}-${randomUUID().substring(0, 8)}`;
-    this.log(`📋 RequestList ready (${crawlerId}) — launching browser...`);
-    const requestList = await RequestList.open(crawlerId, [url]);
-
-    const crawler = new PlaywrightCrawler({
-      requestList,
-      headless: this.config.headless,
-      maxRequestsPerCrawl: this.config.maxRequestsPerCrawl,
-      requestHandlerTimeoutSecs: this.config.requestHandlerTimeoutSecs,
-      navigationTimeoutSecs: this.config.navigationTimeoutSecs,
-      maxRequestRetries: 1,
-      browserPoolOptions: {
-        useFingerprints: false,
-      },
-      preNavigationHooks: [
-        async ({ page }) => {
-          scraper.log(`🌍 Navigating to ${url}...`);
-          // Block fonts/video to speed up load (keep images for data extraction)
-          await page.route('**/*.{woff,woff2,ttf,eot,mp4,webm}', route => route.abort());
-        },
-      ],
-      launchContext: {
-        launchOptions: {
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled',
-          ],
-        },
-      },
-
-      async requestHandler({ page, request }) {
-        scraper.log(`📥 Page received — waiting for DOM...`);
-
-        // Wait for DOM to be ready
-        try {
-          await page.waitForLoadState('domcontentloaded', { timeout: 30000 });
-          scraper.log('✅ DOM loaded — waiting 5s for JS render...');
-        } catch (e) {
-          scraper.log(`⚠️  domcontentloaded timeout, continuing anyway...`, 'warn');
-        }
-
-        await page.waitForTimeout(5000);
-        scraper.log(`🔎 JS render wait complete — extracting items...`);
-
-        // Log page info (slim unless LOG_VERBOSE=true)
-        await scraper.logPageStructure(page, request.url);
-
-        // Extract items using platform-specific logic
-        try {
-          const items = await scraper.extractItems(page, searchTerm);
-          scraper.results.push(...items);
-          scraper.logExtractedItems(items);
-        } catch (error) {
-          scraper.log(`❌ Error extracting items: ${error.message}`, 'error');
-          scraper.log(`Stack: ${error.stack}`, 'error');
-        }
-      },
-
-      failedRequestHandler({ request, error }) {
-        scraper.log(`❌ Request failed: ${request.url} - ${error.message}`, 'error');
-      },
-    });
-
-    // Race the crawler against a hard timeout so one hung platform
-    // can't block the entire parallel search indefinitely.
+    // Hard timeout so one hung platform can't block the entire search.
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error(`Timeout after ${SCRAPER_TIMEOUT_MS / 1000}s`)),
@@ -314,13 +252,60 @@ class BaseScraper {
       )
     );
 
+    const work = async () => {
+      // Get an isolated context from the shared browser
+      context = await browserManager.newContext({ headless: this.config.headless });
+      const browserPage = await context.newPage();
+
+      // Block fonts/video to speed up load (keep images for data extraction)
+      await browserPage.route('**/*.{woff,woff2,ttf,eot,mp4,webm}', route => route.abort());
+
+      // Hide automation signals
+      await browserPage.addInitScript(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      });
+
+      this.log(`🌍 Navigating to ${url}...`);
+
+      // Navigate — catch timeout so we can still try to extract
+      try {
+        await browserPage.goto(url, {
+          waitUntil: 'domcontentloaded',
+          timeout: this.config.navigationTimeoutSecs * 1000,
+        });
+        this.log('✅ DOM loaded — waiting 5s for JS render...');
+      } catch (e) {
+        this.log(`⚠️  Navigation issue: ${e.message}, continuing anyway...`, 'warn');
+      }
+
+      // Wait for JS frameworks to hydrate / render results
+      await browserPage.waitForTimeout(5000);
+      this.log(`🔎 JS render wait complete — extracting items...`);
+
+      // Log page info (slim unless LOG_VERBOSE=true)
+      await this.logPageStructure(browserPage, url);
+
+      // Extract items using platform-specific logic
+      try {
+        const items = await this.extractItems(browserPage, searchTerm);
+        this.results.push(...items);
+        this.logExtractedItems(items);
+      } catch (error) {
+        this.log(`❌ Error extracting items: ${error.message}`, 'error');
+        this.log(`Stack: ${error.stack}`, 'error');
+      }
+    };
+
     try {
-      this.log(`🏃 Crawler running (hard limit: ${SCRAPER_TIMEOUT_MS / 1000}s)...`);
-      await Promise.race([crawler.run(), timeoutPromise]);
+      this.log(`🏃 Scraping (hard limit: ${SCRAPER_TIMEOUT_MS / 1000}s)...`);
+      await Promise.race([work(), timeoutPromise]);
     } catch (error) {
-      this.log(`❌ Crawler stopped: ${error.message}`, 'error');
-      // Attempt graceful teardown on timeout
-      try { await crawler.teardown(); } catch { /* ignore */ }
+      this.log(`❌ Scraper stopped: ${error.message}`, 'error');
+    } finally {
+      // Always close the context to free memory, even on timeout/error
+      if (context) {
+        await browserManager.closeContext(context);
+      }
     }
 
     this.log(`🏁 Done — ${this.results.length} items found.`);

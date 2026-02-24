@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="">
 
 <head>
   <meta charset="utf-8" />
@@ -15,6 +15,16 @@
     rel="stylesheet" />
 
   <title>Clankeye</title>
+
+  <!-- Prevent flash of wrong theme: set dark class before paint -->
+  <script>
+    (function () {
+      var mode = localStorage.getItem('clankeye-mode') || localStorage.getItem('theme');
+      if (mode === 'dark' || (!mode && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 </head>
 
 <body>

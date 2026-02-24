@@ -39,7 +39,7 @@ class LeboncoinScraper extends BaseScraper {
    * Build the direct LeBonCoin search URL (kept for reference/display purposes).
    */
   buildSearchUrl(searchTerm, page = 1) {
-    let url = `https://www.leboncoin.fr/recherche?text=${encodeURIComponent(searchTerm)}&sort=time`;
+    let url = `https://www.leboncoin.fr/recherche?text=${encodeURIComponent(searchTerm)}&sort=time&order=desc`;
     if (page > 1) url += `&page=${page}`;
     return url;
   }
@@ -165,7 +165,7 @@ class LeboncoinScraper extends BaseScraper {
 
     for (let i = 0; i < positions.length; i++) {
       const start = positions[i].index;
-      const end = i + 1 < positions.length ? positions[i + 1].index : start + 5000;
+      const end = i + 1 < positions.length ? positions[i + 1].index : start + 8000;
       const block = html.substring(start, end);
 
       // Extract URL — must be a leboncoin.fr URL
@@ -194,6 +194,30 @@ class LeboncoinScraper extends BaseScraper {
         .trim();
 
       if (!title) continue;
+
+      // ── Extract image from Brave result block ──
+      // Brave sometimes includes thumbnail/preview images for results
+      let image = '';
+      // Look for thumbnail in the result block (Brave product cards, image preview)
+      const imgPatterns = [
+        // Brave img tag inside the snippet block
+        /<img[^>]*src="(https?:\/\/[^"]+(?:\.jpg|\.jpeg|\.png|\.webp)[^"]*)"[^>]*>/i,
+        // Brave sometimes wraps images in a figure or card-image
+        /class="[^"]*(?:thumb|image|card-img|preview)[^"]*"[^>]*>\s*<img[^>]*src="(https?:\/\/[^"]+)"[^>]*>/i,
+        // Data-src or lazy-loaded images
+        /<img[^>]*data-src="(https?:\/\/[^"]+(?:\.jpg|\.jpeg|\.png|\.webp)[^"]*)"[^>]*>/i,
+        // Background image in style attribute
+        /style="[^"]*background-image:\s*url\(['"]?(https?:\/\/[^'")\s]+)['"]?\)/i,
+        // Brave's image proxy format
+        /src="(https?:\/\/imgs\.search\.brave\.com\/[^"]+)"/i,
+      ];
+      for (const pattern of imgPatterns) {
+        const imgMatch = block.match(pattern);
+        if (imgMatch && imgMatch[1]) {
+          image = this._decodeHtmlEntities(imgMatch[1]);
+          break;
+        }
+      }
 
       // Extract description — Brave uses different layouts for ad pages vs category pages
       let description = '';
@@ -276,7 +300,7 @@ class LeboncoinScraper extends BaseScraper {
         title,
         price,
         url,
-        image: '',
+        image,
         location: '',
         createdTime: '',
         source: 'leboncoin',

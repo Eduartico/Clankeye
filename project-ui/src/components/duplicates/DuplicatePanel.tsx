@@ -44,15 +44,15 @@ export default function DuplicatePanel({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center glass-overlay">
+      <div className="glass-modal max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-700">
+        <div className="flex items-center justify-between p-4 border-b border-white/10 dark:border-white/5">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h2 className="text-lg font-bold text-text-primary">
               Duplicate Items Found
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-text-secondary">
               This item appears on {group.platforms.length} platform
               {group.platforms.length > 1 ? "s" : ""}
             </p>
@@ -101,10 +101,10 @@ export default function DuplicatePanel({
 
         {/* Current item */}
         <div className="p-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide font-semibold">
+          <p className="text-xs text-text-secondary mb-2 uppercase tracking-wide font-semibold">
             Current item
           </p>
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-zinc-700 rounded-xl">
+          <div className="flex items-center gap-3 p-3 glass-surface-light rounded-xl">
             {(item.photos?.[0] || item.image) && (
               <img
                 src={item.photos?.[0] || item.image}
@@ -114,7 +114,7 @@ export default function DuplicatePanel({
             )}
             <div className="min-w-0 flex-1">
               <PlatformBadge platform={item.source} />
-              <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1 truncate">
+              <p className="text-sm font-semibold text-text-primary mt-1 truncate">
                 {item.title}
               </p>
               <p className="text-sm font-bold text-primary-500">
@@ -126,7 +126,7 @@ export default function DuplicatePanel({
 
         {/* Duplicate items */}
         <div className="px-4 pb-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide font-semibold">
+          <p className="text-xs text-text-secondary mb-2 uppercase tracking-wide font-semibold">
             Also found on
           </p>
           <div className="space-y-2">
@@ -136,7 +136,7 @@ export default function DuplicatePanel({
                 href={dupItem.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-zinc-700 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-600 transition-colors"
+                className="flex items-center gap-3 p-3 glass-surface-light rounded-xl hover:opacity-80 transition-all"
               >
                 {dupItem.image && (
                   <img

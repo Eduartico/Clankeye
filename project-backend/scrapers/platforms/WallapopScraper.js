@@ -2,17 +2,19 @@ import BaseScraper from '../BaseScraper.js';
 
 /**
  * Wallapop scraper using Crawlee + Playwright
- * Search URL pattern: https://es.wallapop.com/app/search?keywords={searchTerm}
+ * Search URL pattern: https://pt.wallapop.com/search?keywords={searchTerm}&order_by=newest
+ * Note: Wallapop uses infinite scroll — no page parameter.
  */
 class WallapopScraper extends BaseScraper {
   constructor(config = {}) {
     super('wallapop', config);
-    this.domain = config.domain || 'https://es.wallapop.com';
+    this.domain = config.domain || 'https://pt.wallapop.com';
   }
 
   buildSearchUrl(searchTerm, page = 1) {
-    let url = `${this.domain}/app/search?keywords=${encodeURIComponent(searchTerm)}&latitude=40.4168&longitude=-3.7038`;
-    if (page > 1) url += `&start=${(page - 1) * 40}`;
+    // Wallapop uses infinite scroll — no pagination, order_by=newest for most recent
+    const url = `${this.domain}/search?keywords=${encodeURIComponent(searchTerm)}&order_by=newest`;
+    // Wallapop has no page parameter (infinite scroll) — always returns first batch
     return url;
   }
 
@@ -106,7 +108,7 @@ class WallapopScraper extends BaseScraper {
             url: link?.href || '',
             image: imgEl?.src || imgEl?.getAttribute('data-src') || '',
             description: descEl?.innerText?.trim() || '',
-            rawHtml: card.outerHTML.substring(0, 300),
+            source: 'wallapop',
           });
         } catch (e) { /* skip */ }
       });

@@ -8,8 +8,7 @@ export default function GridCards({ children, columns = 3 } : GridCardsProps) {
   const gridStyle: React.CSSProperties = {
     display: 'grid',
     gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-    gap: '1.25rem',
-    justifyItems: 'center',
+    gap: '1rem',
     width: '100%',
   };
 

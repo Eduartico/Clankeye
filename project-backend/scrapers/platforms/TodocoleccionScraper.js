@@ -11,10 +11,10 @@ class TodocoleccionScraper extends BaseScraper {
   }
 
   buildSearchUrl(searchTerm, page = 1) {
-    // Todocoleccion uses /buscador?from=top&bu= for search
-    const encoded = searchTerm.replace(/\s+/g, '+');
-    let url = `https://www.todocoleccion.net/buscador?from=top&bu=${encoded}`;
-    if (page > 1) url += `&pagina=${page}`;
+    // Todocoleccion uses /buscador with bu= for search term, O=r for sort by recent, P= for page
+    const encoded = encodeURIComponent(searchTerm);
+    let url = `https://www.todocoleccion.net/buscador?bu=${encoded}&O=r`;
+    if (page > 1) url += `&P=${page}`;
     return url;
   }
 
@@ -85,15 +85,15 @@ class TodocoleccionScraper extends BaseScraper {
       const results = [];
 
       function extractImage(card) {
-        const imgEl = card.querySelector('img');
-        if (imgEl) {
+        const imgEls = card.querySelectorAll('img');
+        for (const imgEl of imgEls) {
           const src = imgEl.src || imgEl.getAttribute('data-src') || imgEl.getAttribute('data-lazy') || imgEl.getAttribute('data-original') || imgEl.getAttribute('data-lazy-src') || imgEl.getAttribute('data-img') || '';
           const srcset = imgEl.getAttribute('srcset') || imgEl.getAttribute('data-srcset') || '';
           if (srcset) {
             const parts = srcset.split(',').map(s => s.trim().split(/\s+/)[0]).filter(Boolean);
             if (parts.length > 0) return parts[parts.length - 1];
           }
-          if (src && !src.includes('data:image') && !src.includes('placeholder') && !src.includes('spacer')) return src;
+          if (src && !src.includes('data:image') && !src.includes('placeholder') && !src.includes('spacer') && src.length > 10) return src;
         }
         const picture = card.querySelector('picture source');
         if (picture) {
@@ -111,31 +111,64 @@ class TodocoleccionScraper extends BaseScraper {
         return '';
       }
 
+      // Try multiple selectors - todocoleccion uses .lote for items
       let cards = document.querySelectorAll('.lote');
       if (cards.length === 0) cards = document.querySelectorAll('[class*="lote"]');
+      if (cards.length === 0) cards = document.querySelectorAll('.product-card');
       if (cards.length === 0) cards = document.querySelectorAll('article');
       if (cards.length === 0) cards = document.querySelectorAll('a[href*="/lote/"]');
+      // Fallback: find any link that looks like a todocoleccion item page
+      if (cards.length === 0) {
+        const allLinks = document.querySelectorAll('a[href*="todocoleccion.net"]');
+        cards = [...allLinks].filter(a => {
+          const h = a.href || '';
+          return h.includes('/lote/') || h.includes('/item/') || /\/\d{5,}/.test(h);
+        });
+      }
 
       cards.forEach(card => {
         try {
           const link = card.querySelector('a') || card.closest('a') || card;
-          const titleEl = card.querySelector('.title, h3, h4, .lote-title, [class*="title"]');
-          const priceEl = card.querySelector('.price, .lote-price, [class*="price"], .puja');
-          const bidEl = card.querySelector('.bid, .puja-actual, [class*="bid"]');
-          const timeEl = card.querySelector('.time, .tiempo, [class*="time"]');
+          const titleEl = card.querySelector('.title, h3, h4, .lote-title, [class*="title"], [class*="nombre"]');
+          const priceEl = card.querySelector('.price, .lote-price, [class*="price"], [class*="precio"], .puja');
+          const bidEl = card.querySelector('.bid, .puja-actual, [class*="bid"], [class*="puja"]');
+          const timeEl = card.querySelector('.time, .tiempo, [class*="time"], [class*="tiempo"], [class*="fecha"]');
           const image = extractImage(card);
 
-          const title = titleEl?.innerText?.trim() || '';
-          // Skip blank/empty items: must have BOTH title AND image to be a real item
-          if (!title || !image) return;
+          let title = titleEl?.innerText?.trim() || '';
+          // If no specific title element, try the link text
+          if (!title) {
+            title = link?.innerText?.trim()?.split('\n')[0]?.trim() || '';
+          }
+          // Must have a meaningful title (not just discount labels, time stamps, etc.)
+          if (!title || title.length < 3) return;
+          // Skip overlay/badge text: discount labels, time-remaining strings, price-only
+          if (/^-?\d+%$/.test(title)) return;                        // "-50%", "30%"
+          if (/^\d+[dhms]\s*\d*[dhms]?$/i.test(title)) return;       // "4d 3h", "5d 8h"
+          if (/^(envío|envio|shipping|gratis|free)$/i.test(title)) return;
+          if (/^\d+[.,]?\d*\s*€?$/.test(title)) return;              // just a price
+          // Skip recommendation/promo text that leaks into results
+          if (/echa un vistazo/i.test(title)) return;
+          if (/últimos lotes/i.test(title)) return;
+          if (/has mostrado interés/i.test(title)) return;
+          if (/te puede interesar/i.test(title)) return;
+          if (/recomendados para ti/i.test(title)) return;
+          if (/lotes similares/i.test(title)) return;
+
+          const url = link?.href || '';
+          // Must be a valid todocoleccion URL (skip items without URL)
+          if (!url) return;
+          if (url && !url.includes('todocoleccion.net') && !url.startsWith('/')) return;
 
           results.push({
             title,
             price: priceEl?.innerText?.trim() || '',
-            url: link?.href || '',
+            url: url.startsWith('/') ? `https://www.todocoleccion.net${url}` : url,
             image,
             currentBid: bidEl?.innerText?.trim() || '',
             timeRemaining: timeEl?.innerText?.trim() || '',
+            date: timeEl?.innerText?.trim() || '',
+            source: 'todocoleccion',
           });
         } catch (e) { /* skip */ }
       });
@@ -143,7 +176,15 @@ class TodocoleccionScraper extends BaseScraper {
       return results;
     });
 
-    return items;
+    // Deduplicate by URL (todocoleccion sometimes renders same item multiple times)
+    const seen = new Set();
+    const deduped = items.filter(item => {
+      if (!item.url || seen.has(item.url)) return false;
+      seen.add(item.url);
+      return true;
+    });
+
+    return deduped;
   }
 }
 

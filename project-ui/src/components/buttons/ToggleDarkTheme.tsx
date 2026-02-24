@@ -18,11 +18,7 @@ export default function ToggleDarkTheme({ showSettings = false }: ToggleDarkThem
       {/* Quick toggle button */}
       <button
         onClick={toggleMode}
-        className="flex items-center justify-center p-2 rounded-full 
-                   bg-secondary-200 dark:bg-secondary-800 
-                   text-primary-500 hover:text-primary-600 
-                   dark:text-primary-400 dark:hover:text-primary-300 
-                   transition ease-in-out duration-200"
+        className="glass-btn glass-btn-ghost flex items-center justify-center p-2 rounded-full"
         aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
       >
         {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
@@ -33,11 +29,7 @@ export default function ToggleDarkTheme({ showSettings = false }: ToggleDarkThem
         <>
           <button
             onClick={() => setSettingsOpen(!settingsOpen)}
-            className="flex items-center justify-center p-2 rounded-full 
-                       bg-secondary-200 dark:bg-secondary-800 
-                       text-secondary-500 hover:text-secondary-600 
-                       dark:text-secondary-400 dark:hover:text-secondary-300 
-                       transition ease-in-out duration-200"
+            className="glass-btn glass-btn-ghost flex items-center justify-center p-2 rounded-full"
             aria-label="Theme settings"
           >
             <SettingsIcon />

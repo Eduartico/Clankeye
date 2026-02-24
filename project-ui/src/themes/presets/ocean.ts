@@ -114,7 +114,7 @@ export const oceanTheme: Theme = {
       text: {
         primary: '#f0fdfa',
         secondary: '#5eead4',
-        disabled: '#0f766e',
+        disabled: '#2dd4bf',
         inverse: '#042f2e',
       },
       border: {

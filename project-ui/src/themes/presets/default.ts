@@ -114,7 +114,7 @@ export const defaultTheme: Theme = {
       text: {
         primary: '#f8fafc',
         secondary: '#94a3b8',
-        disabled: '#475569',
+        disabled: '#64748b',
         inverse: '#0f172a',
       },
       border: {

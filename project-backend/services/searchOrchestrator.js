@@ -18,9 +18,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DUMPS_DIR = join(__dirname, '..', 'data', 'dumps');
 
-// How many platform scrapers run concurrently (each = 1 Playwright browser).
-// Keep low to avoid CPU/RAM exhaustion. 2 avoids event-loop overload on most machines.
-const SCRAPER_CONCURRENCY = parseInt(process.env.SCRAPER_CONCURRENCY || '2', 10);
+// How many platform scrapers run concurrently.
+// Now safe at 8 because all scrapers share ONE Chromium browser via BrowserManager
+// (each scraper gets a lightweight browser context instead of a full browser process).
+const SCRAPER_CONCURRENCY = parseInt(process.env.SCRAPER_CONCURRENCY || '8', 10);
 
 class SearchOrchestrator {
   constructor() {
@@ -317,6 +318,8 @@ class SearchOrchestrator {
    * Parse time from various formats to a timestamp.
    * Handles ISO strings, relative strings ("il y a 2 heures", "hace 3 días",
    * "há 5 horas", "2 hours ago", "vor 1 Tag"), and numeric timestamps.
+   * Also handles Portuguese dates like "Hoje às 14:30", "23 de fevereiro de 2026",
+   * Polish dates like "Dzisiaj o 14:30", and OLX "Para o topo a ..." patterns.
    */
   _parseTime(timeValue) {
     if (!timeValue) return null;
@@ -325,13 +328,16 @@ class SearchOrchestrator {
 
     const str = String(timeValue).trim();
 
+    // Strip "Para o topo a " / "Odświeżono " prefix (OLX bump/boost indicators)
+    const cleaned = str.replace(/^(Para o topo a|Odświeżono|Promoted|Destacado)\s+/i, '').trim();
+
     // Try ISO / standard date parse first
-    const parsed = Date.parse(str);
+    const parsed = Date.parse(cleaned);
     if (!isNaN(parsed)) return parsed;
 
     // ── Relative time patterns (multilingual) ─────────────────────
     const now = Date.now();
-    const lower = str.toLowerCase();
+    const lower = cleaned.toLowerCase();
 
     // Extract the numeric part
     const numMatch = lower.match(/(\d+)/);
@@ -347,12 +353,155 @@ class SearchOrchestrator {
     if (/week|semaine|semana|woche|tydzień|tydz/.test(lower)) return now - num * 7 * 86400 * 1000;
     // Months
     if (/month|mois|mes|monat|miesi/.test(lower)) return now - num * 30 * 86400 * 1000;
-    // "today" / "aujourd'hui" / "hoy" / "hoje" / "heute" / "dziś"
-    if (/today|aujourd|hoy|hoje|heute|dziś|vandaag/.test(lower)) return now;
-    // "yesterday" etc.
-    if (/yesterday|hier|ayer|ontem|gestern|wczoraj/.test(lower)) return now - 86400 * 1000;
+
+    // "today" / "aujourd'hui" / "hoy" / "hoje" / "heute" / "dziś" (with optional time)
+    if (/today|aujourd|hoy|hoje|heute|dziś|dzisiaj|vandaag/.test(lower)) {
+      // Try to parse time like "Hoje às 14:30" or "Dzisiaj o 09:43"
+      const timeMatch = lower.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        const d = new Date();
+        d.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), 0, 0);
+        return d.getTime();
+      }
+      return now;
+    }
+
+    // "yesterday" etc. (with optional time)
+    if (/yesterday|hier|ayer|ontem|gestern|wczoraj/.test(lower)) {
+      const timeMatch = lower.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        const d = new Date(now - 86400 * 1000);
+        d.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), 0, 0);
+        return d.getTime();
+      }
+      return now - 86400 * 1000;
+    }
+
+    // Portuguese full dates: "23 de fevereiro de 2026"
+    const ptMonths = { janeiro: 0, fevereiro: 1, março: 2, marco: 2, abril: 3, maio: 4, junho: 5, julho: 6, agosto: 7, setembro: 8, outubro: 9, novembro: 10, dezembro: 11 };
+    const ptMatch = lower.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/);
+    if (ptMatch) {
+      const month = ptMonths[ptMatch[2]];
+      if (month !== undefined) {
+        const d = new Date(parseInt(ptMatch[3], 10), month, parseInt(ptMatch[1], 10));
+        // Also try to capture time if present: "23 de fevereiro de 2026, 14:30"
+        const timeMatch = lower.match(/(\d{1,2}):(\d{2})/);
+        if (timeMatch) d.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10));
+        return d.getTime();
+      }
+    }
+
+    // Polish month names: "23 lut 2026" / "23 lutego 2026"
+    const plMonths = { sty: 0, lut: 1, mar: 2, kwi: 3, maj: 4, cze: 5, lip: 6, sie: 7, wrz: 8, paź: 9, paz: 9, lis: 10, gru: 11, stycznia: 0, lutego: 1, marca: 2, kwietnia: 3, maja: 4, czerwca: 5, lipca: 6, sierpnia: 7, września: 8, wrzesnia: 8, października: 9, pazdziernika: 9, listopada: 10, grudnia: 11 };
+    const plMatch = lower.match(/(\d{1,2})\s+(\w+)\.?\s+(\d{4})/);
+    if (plMatch) {
+      const month = plMonths[plMatch[2].replace(/\./g, '')];
+      if (month !== undefined) {
+        return new Date(parseInt(plMatch[3], 10), month, parseInt(plMatch[1], 10)).getTime();
+      }
+    }
+
+    // Spanish month names: "23 feb 2026" / "23 febrero 2026"
+    const esMonths = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11, enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5, julio: 6, agosto: 7, septiembre: 8, octubre: 9, noviembre: 10, diciembre: 11 };
+    const esMatch = lower.match(/(\d{1,2})\s+(\w+)\.?\s+(\d{4})/);
+    if (esMatch) {
+      const month = esMonths[esMatch[2].replace(/\./g, '')];
+      if (month !== undefined) {
+        return new Date(parseInt(esMatch[3], 10), month, parseInt(esMatch[1], 10)).getTime();
+      }
+    }
+
+    // French month names: "23 fév 2026" / "23 février 2026"
+    const frMonths = { jan: 0, fév: 1, fev: 1, mar: 2, avr: 3, mai: 4, juin: 5, juil: 6, aoû: 7, aou: 7, sep: 8, oct: 9, nov: 10, déc: 11, dec: 11, janvier: 0, février: 1, fevrier: 1, mars: 2, avril: 3, juillet: 6, août: 7, aout: 7, septembre: 8, octobre: 9, novembre: 10, décembre: 11, decembre: 11 };
+    const frMatch = lower.match(/(\d{1,2})\s+(\w+)\.?\s+(\d{4})/);
+    if (frMatch) {
+      const month = frMonths[frMatch[2].replace(/\./g, '')];
+      if (month !== undefined) {
+        return new Date(parseInt(frMatch[3], 10), month, parseInt(frMatch[1], 10)).getTime();
+      }
+    }
+
+    // Short date without year: "23 Feb" / "23 fev" — assume current year
+    const shortMatch = lower.match(/^(\d{1,2})\s+(\w{3,})\.?$/);
+    if (shortMatch) {
+      const allMonths = { ...ptMonths, ...plMonths, ...esMonths, ...frMonths, jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+      const month = allMonths[shortMatch[2].replace(/\./g, '')];
+      if (month !== undefined) {
+        return new Date(new Date().getFullYear(), month, parseInt(shortMatch[1], 10)).getTime();
+      }
+    }
 
     return null;
+  }
+
+  /**
+   * Search with per-platform callbacks so callers can stream/react as each
+   * platform finishes, while still respecting the SCRAPER_CONCURRENCY cap.
+   *
+   * @param {Object} params
+   * @param {string} params.query
+   * @param {string[]} [params.platforms]
+   * @param {Object}  [params.pages]
+   * @param {Object}  [params.config]
+   * @param {string}  [params.vintedCountry]
+   * @param {(platform: string) => void} [params.onPlatformStart]
+   * @param {(platform: string, result: Object) => void} [params.onPlatformDone]
+   */
+  async searchWithCallback({
+    query,
+    platforms,
+    pages = {},
+    config = {},
+    vintedCountry = 'pt',
+    onPlatformStart = null,
+    onPlatformDone = null,
+  }) {
+    if (!query?.trim()) throw new Error('Search query is required');
+
+    const allPlatforms = getScraperNames();
+    const selectedPlatforms = platforms?.length
+      ? platforms.filter(p => allPlatforms.includes(p))
+      : allPlatforms;
+
+    if (selectedPlatforms.length === 0) {
+      throw new Error(`No valid platforms. Available: ${allPlatforms.join(', ')}`);
+    }
+
+    const scraperConfig = { ...this.defaultConfig, ...config };
+    const vintedDomain = `https://www.vinted.${vintedCountry || 'pt'}`;
+
+    // Accumulate results for dumping
+    const allResults = [];
+
+    const tasks = selectedPlatforms.map(platformName => async () => {
+      onPlatformStart?.(platformName);
+
+      const platformConfig = platformName === 'vinted'
+        ? { ...scraperConfig, domain: vintedDomain }
+        : scraperConfig;
+
+      const result = await this._scrapePlatform(
+        platformName,
+        query,
+        pages[platformName] || 1,
+        platformConfig,
+      );
+
+      allResults.push(result);
+      onPlatformDone?.(platformName, result);
+      return result;
+    });
+
+    const results = await this._pool(tasks, SCRAPER_CONCURRENCY);
+
+    // Dump results to files after all platforms finish
+    const allItems = allResults.flatMap(r =>
+      r.items.map(item => ({ ...item, source: item.source || r.platform }))
+    );
+    const sortedItems = this._sortByTime(allItems);
+    this._dumpResults(query, allResults, sortedItems);
+
+    return results;
   }
 
   /**

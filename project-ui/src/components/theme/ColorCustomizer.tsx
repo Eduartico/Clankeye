@@ -67,9 +67,7 @@ export function ColorCustomizer({ className = '' }: ColorCustomizerProps) {
                   type="text"
                   value={getBaseColor(key)}
                   onChange={(e) => handleColorChange(key, e.target.value)}
-                  className="flex-1 px-2 py-1 text-sm rounded border border-border-default 
-                           bg-background-paper text-text-primary
-                           focus:border-primary-500 focus:outline-none"
+                  className="glass-input flex-1 px-2 py-1 text-sm"
                   placeholder="#000000"
                 />
               </div>
@@ -78,9 +76,7 @@ export function ColorCustomizer({ className = '' }: ColorCustomizerProps) {
 
           <button
             onClick={resetToDefault}
-            className="w-full mt-2 px-3 py-2 text-sm font-medium
-                     text-text-secondary border border-border-default rounded-lg
-                     hover:bg-background-elevated transition-colors"
+            className="glass-btn glass-btn-ghost w-full mt-2 px-3 py-2 text-sm rounded-xl"
           >
             Reset to Default
           </button>

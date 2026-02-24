@@ -1,21 +1,36 @@
-import React from "react";
-import PlaceholderIcon from "../../assets/mando.png";
+import React, { useState, useRef, useCallback } from "react";
+import EbayIcon         from "../../assets/PlatformIcons/ebay.png";
+import LeboncoinIcon    from "../../assets/PlatformIcons/leboncoin.png";
+import OlxBrIcon        from "../../assets/PlatformIcons/olxbr.png";
+import OlxPlIcon        from "../../assets/PlatformIcons/olxpl.png";
+import OlxPtIcon        from "../../assets/PlatformIcons/olxpt.png";
+import TodocoleccionIcon from "../../assets/PlatformIcons/todocoleccion.png";
+import VintedIcon       from "../../assets/PlatformIcons/vinted.png";
+import WallapopIcon     from "../../assets/PlatformIcons/wallapop.png";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type PlatformSearchStatus = "idle" | "queued" | "loading" | "done" | "empty" | "failed";
 
+export interface PlatformConfig {
+  id: string;
+  label: string;
+  country: string;
+  icon: string;
+  hasCountry?: boolean;
+}
+
 // ─── Data ────────────────────────────────────────────────────────────────────
 
-export const PLATFORM_CONFIGS = [
-  { id: "olx-pt",        label: "OLX Portugal",    country: "PT", icon: PlaceholderIcon },
-  { id: "olx-br",        label: "OLX Brazil",      country: "BR", icon: PlaceholderIcon },
-  { id: "olx-pl",        label: "OLX Poland",      country: "PL", icon: PlaceholderIcon },
-  { id: "vinted",        label: "Vinted",           country: "PT", icon: PlaceholderIcon, hasCountry: true },
-  { id: "ebay",          label: "eBay",             country: "US", icon: PlaceholderIcon },
-  { id: "wallapop",      label: "Wallapop",         country: "ES", icon: PlaceholderIcon },
-  { id: "todocoleccion", label: "Todocoleccion",    country: "ES", icon: PlaceholderIcon },
-  { id: "leboncoin",     label: "Leboncoin",        country: "FR", icon: PlaceholderIcon },
+export const DEFAULT_PLATFORM_CONFIGS: PlatformConfig[] = [
+  { id: "olx-pt",        label: "OLX Portugal",    country: "PT", icon: OlxPtIcon },
+  { id: "olx-br",        label: "OLX Brazil",      country: "BR", icon: OlxBrIcon },
+  { id: "olx-pl",        label: "OLX Poland",      country: "PL", icon: OlxPlIcon },
+  { id: "vinted",        label: "Vinted",           country: "PT", icon: VintedIcon, hasCountry: true },
+  { id: "ebay",          label: "eBay",             country: "US", icon: EbayIcon },
+  { id: "wallapop",      label: "Wallapop",         country: "ES", icon: WallapopIcon },
+  { id: "todocoleccion", label: "Todocoleccion",    country: "ES", icon: TodocoleccionIcon },
+  { id: "leboncoin",     label: "Leboncoin",        country: "FR", icon: LeboncoinIcon },
 ];
 
 export const VINTED_COUNTRIES = [
@@ -98,6 +113,10 @@ interface PlatformSidebarProps {
   onToggleCollapse?: () => void;
   /** Per-platform search status to display icons */
   platformStatus?: Record<string, PlatformSearchStatus>;
+  /** Current ordering of platforms (array of PlatformConfig) */
+  platformOrder: PlatformConfig[];
+  /** Called when the user reorders platforms via drag-and-drop */
+  onPlatformOrderChange: (newOrder: PlatformConfig[]) => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -110,8 +129,39 @@ export default function PlatformSidebar({
   collapsed = false,
   onToggleCollapse,
   platformStatus = {},
+  platformOrder,
+  onPlatformOrderChange,
 }: PlatformSidebarProps) {
-  const allSelected = selectedPlatforms.length === PLATFORM_CONFIGS.length;
+  const allSelected = selectedPlatforms.length === platformOrder.length;
+
+  // ── Drag-and-drop state ──────────────────────────────────────
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const handleDragStart = useCallback((idx: number) => {
+    dragItem.current = idx;
+    setDraggingIdx(idx);
+  }, []);
+
+  const handleDragEnter = useCallback((idx: number) => {
+    dragOverItem.current = idx;
+    setDragOverIdx(idx);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
+      const reordered = [...platformOrder];
+      const [removed] = reordered.splice(dragItem.current, 1);
+      reordered.splice(dragOverItem.current, 0, removed);
+      onPlatformOrderChange(reordered);
+    }
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setDraggingIdx(null);
+    setDragOverIdx(null);
+  }, [platformOrder, onPlatformOrderChange]);
 
   const togglePlatform = (id: string) => {
     if (selectedPlatforms.includes(id)) {
@@ -125,7 +175,7 @@ export default function PlatformSidebar({
     if (allSelected) {
       onPlatformsChange([]);
     } else {
-      onPlatformsChange(PLATFORM_CONFIGS.map((p) => p.id));
+      onPlatformsChange(platformOrder.map((p) => p.id));
     }
   };
 
@@ -134,14 +184,14 @@ export default function PlatformSidebar({
       <div className="flex flex-col items-center gap-2 py-4 px-2">
         <button
           onClick={onToggleCollapse}
-          className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+          className="glass-btn glass-btn-ghost p-2 rounded-xl"
           title="Expand platforms"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-zinc-500 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
-        {PLATFORM_CONFIGS.map((platform) => {
+        {platformOrder.map((platform) => {
           const isSelected = selectedPlatforms.includes(platform.id);
           const status = platformStatus[platform.id] ?? "idle";
           return (
@@ -153,7 +203,9 @@ export default function PlatformSidebar({
                 }`}
                 title={platform.label}
               >
-                <img src={platform.icon} alt={platform.label} className="w-6 h-6" />
+                <span className="w-6 h-6 flex items-center justify-center">
+                  <img src={platform.icon} alt={platform.label} className="max-w-full max-h-full object-contain" />
+                </span>
               </button>
               {status !== "idle" && (
                 <span className="absolute -bottom-1 -right-1">
@@ -168,15 +220,15 @@ export default function PlatformSidebar({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4 overflow-y-auto">
+    <div className="flex flex-col gap-3 p-4 overflow-y-auto glass-scroll">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+        <h3 className="text-sm font-bold text-text-secondary uppercase tracking-wider">
           Platforms
         </h3>
         <button
           onClick={onToggleCollapse}
-          className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+          className="glass-btn glass-btn-ghost p-1 rounded-lg"
           title="Collapse sidebar"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-zinc-500 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -186,7 +238,7 @@ export default function PlatformSidebar({
       </div>
 
       {/* Select All */}
-      <label className="flex items-center gap-2 cursor-pointer group pb-2 border-b border-zinc-200 dark:border-zinc-700">
+      <label className="flex items-center gap-2 cursor-pointer group pb-2 border-b border-white/10 dark:border-white/5">
         <input
           type="checkbox"
           checked={allSelected}
@@ -197,24 +249,45 @@ export default function PlatformSidebar({
           Select All
         </span>
         <span className="ml-auto text-xs text-zinc-400 dark:text-zinc-500">
-          {selectedPlatforms.length}/{PLATFORM_CONFIGS.length}
+          {selectedPlatforms.length}/{platformOrder.length}
         </span>
       </label>
 
-      {/* Platform list */}
-      <div className="flex flex-col gap-0.5 overflow-y-auto flex-1">
-        {PLATFORM_CONFIGS.map((platform) => {
+      {/* Platform list — drag-to-reorder */}
+      <div className="flex flex-col gap-0.5 overflow-y-auto flex-1 glass-scroll">
+        {platformOrder.map((platform, idx) => {
           const isSelected = selectedPlatforms.includes(platform.id);
           const status = platformStatus[platform.id] ?? "idle";
+          const isDragging = draggingIdx === idx;
+          const isDragOver = dragOverIdx === idx && draggingIdx !== idx;
           return (
             <div
               key={platform.id}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+              draggable
+              onDragStart={() => handleDragStart(idx)}
+              onDragEnter={() => handleDragEnter(idx)}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnd={handleDragEnd}
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all cursor-grab active:cursor-grabbing ${
+                isDragging
+                  ? "opacity-40 scale-95"
+                  : isDragOver
+                  ? "border-t-2 border-primary-500"
+                  : ""
+              } ${
                 isSelected
                   ? "bg-zinc-100 dark:bg-zinc-800"
                   : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
+              {/* Drag handle */}
+              <span className="text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 dark:hover:text-zinc-400 shrink-0 cursor-grab" title="Drag to reorder">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
+                  <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+                  <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
+                </svg>
+              </span>
               {/* Checkbox + icon + label — clicking toggles platform */}
               <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
                 <input
@@ -223,11 +296,13 @@ export default function PlatformSidebar({
                   onChange={() => togglePlatform(platform.id)}
                   className="w-4 h-4 rounded accent-primary-500 cursor-pointer shrink-0"
                 />
-                <img
-                  src={platform.icon}
-                  alt={platform.label}
-                  className="w-5 h-5 rounded shrink-0"
-                />
+                <span className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <img
+                    src={platform.icon}
+                    alt={platform.label}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </span>
                 <span
                   className={`text-sm truncate transition-colors ${
                     isSelected
@@ -239,23 +314,23 @@ export default function PlatformSidebar({
                 </span>
               </label>
 
-              {/* Status icon */}
-              <StatusIcon status={status} />
-
-              {/* Vinted country — inline on SAME ROW, outside label so it doesn't toggle checkbox */}
+              {/* Vinted country — sits LEFT of status icon, outside label so it doesn't toggle checkbox */}
               {platform.hasCountry && isSelected && (
                 <select
                   value={vintedCountry}
                   onChange={(e) => { e.stopPropagation(); onVintedCountryChange(e.target.value); }}
                   onClick={(e) => e.stopPropagation()}
                   title={`vinted.${vintedCountry}`}
-                  className="shrink-0 text-xs px-1 py-0.5 w-11 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 focus:ring-1 focus:ring-primary-500 focus:outline-none cursor-pointer"
+                  className="glass-input shrink-0 text-xs px-1 py-0.5 w-[52px] !rounded-lg font-medium cursor-pointer"
                 >
                   {VINTED_COUNTRIES.map((c) => (
                     <option key={c.code} value={c.code}>.{c.code}</option>
                   ))}
                 </select>
               )}
+
+              {/* Status icon */}
+              <StatusIcon status={status} />
             </div>
           );
         })}

@@ -9,6 +9,7 @@ import {
   type ThemeContextValue 
 } from "../themes";
 import { generateCSSVariables, applyCSSVariables } from "../themes/utils/cssVariables";
+import { derivePrimaryVariants } from "../themes/utils/colorUtils";
 
 // Storage keys
 const STORAGE_THEME_KEY = "clankeye-theme";
@@ -21,8 +22,15 @@ interface LegacyThemeContextType {
   toggleTheme: () => void;
 }
 
+// Derived primary color variants
+interface PrimaryVariants {
+  primaryColor: string;
+  primaryLight: string;
+  primaryDark: string;
+}
+
 // Full interface combining legacy and new features
-interface FullThemeContextType extends LegacyThemeContextType, ThemeContextValue {}
+interface FullThemeContextType extends LegacyThemeContextType, ThemeContextValue, PrimaryVariants {}
 
 export const ThemeContext = createContext<FullThemeContextType | undefined>(undefined);
 
@@ -178,10 +186,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleTheme = toggleMode;
   const isDarkMode = mode === 'dark';
 
+  // Derived primary color variants
+  const { primaryColor, primaryLight, primaryDark } = useMemo(() => {
+    const basePrimary = currentColors.primary?.[500 as unknown as keyof typeof currentColors.primary] || '#f97316';
+    const variants = derivePrimaryVariants(basePrimary as string);
+    return {
+      primaryColor: variants.primary,
+      primaryLight: variants.primaryLight,
+      primaryDark: variants.primaryDark,
+    };
+  }, [currentColors]);
+
   const contextValue: FullThemeContextType = useMemo(() => ({
     // Legacy API
     isDarkMode,
     toggleTheme,
+    // Derived primary variants
+    primaryColor,
+    primaryLight,
+    primaryDark,
     // New API
     theme,
     mode,
@@ -196,6 +219,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }), [
     isDarkMode,
     toggleTheme,
+    primaryColor,
+    primaryLight,
+    primaryDark,
     theme,
     mode,
     config,

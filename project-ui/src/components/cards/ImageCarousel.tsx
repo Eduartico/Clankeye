@@ -38,7 +38,7 @@ export default function ImageCarousel({ images: imagesProp }: ImageCarouselProps
   };
 
   return (
-    <div className="w-full h-[500px] overflow-hidden relative z-0 rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+    <div className="absolute inset-0 overflow-hidden z-0 bg-zinc-100 dark:bg-zinc-800">
       <img
         src={images[currentIndex] || NoImage}
         alt={`Product ${currentIndex}`}

@@ -14,7 +14,7 @@ interface ThemeSettingsProps {
 export function ThemeSettings({ className = '', onClose }: ThemeSettingsProps) {
   return (
     <div className={`theme-settings ${className}`}>
-      <div className="p-4 bg-background-paper rounded-lg border border-border-default shadow-lg">
+      <div className="glass-dropdown p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-text-primary">
             Appearance

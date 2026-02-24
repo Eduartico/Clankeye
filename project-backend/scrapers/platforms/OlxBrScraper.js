@@ -2,9 +2,8 @@ import BaseScraper from '../BaseScraper.js';
 
 /**
  * OLX Brasil scraper using Crawlee + Playwright
- * Search URL pattern: https://www.olx.com.br/items?q={searchTerm}
- *
- * Filters out promoted/sponsored ads and non-product entries.
+ * OLX BR uses Next.js with __NEXT_DATA__ containing all ad data.
+ * We extract from the JSON hydration first, falling back to DOM selectors.
  */
 class OlxBrScraper extends BaseScraper {
   constructor(config = {}) {
@@ -12,7 +11,10 @@ class OlxBrScraper extends BaseScraper {
   }
 
   buildSearchUrl(searchTerm, page = 1) {
-    let url = `https://www.olx.com.br/items?q=${encodeURIComponent(searchTerm)}`;
+    // OLX BR national search — /brasil?q=...
+    // sf=1 sorts by most recent
+    const encoded = encodeURIComponent(searchTerm);
+    let url = `https://www.olx.com.br/brasil?q=${encoded}&sf=1`;
     if (page > 1) url += `&o=${page}`;
     return url;
   }
@@ -20,10 +22,54 @@ class OlxBrScraper extends BaseScraper {
   async extractItems(page, searchTerm) {
     this.log('🔎 Looking for OLX BR listing elements...');
 
-    // Wait for known listing containers
+    // ── Strategy 1: Try __NEXT_DATA__ JSON hydration (most reliable) ──
+    const nextDataItems = await page.evaluate((term) => {
+      try {
+        const script = document.querySelector('#__NEXT_DATA__');
+        if (!script) return null;
+        const json = JSON.parse(script.textContent);
+        const props = json?.props?.pageProps;
+        if (!props) return null;
+
+        // Try multiple paths where ads might live
+        const ads = props.ads || props.searchResult?.ads || props.adList || props.listing?.listing || props.listing?.ads || [];
+        if (!Array.isArray(ads) || ads.length === 0) return null;
+
+        return ads.map(ad => {
+          // Normalize price to always use "R$" prefix (OLX BR sometimes returns just "$")
+          let price = ad.price || ad.priceLabel || (ad.priceValue ? `R$ ${ad.priceValue}` : '');
+          if (typeof price === 'string') {
+            // Replace bare "$" with "R$" but don't double-prefix "R$"
+            price = price.replace(/^(?:R\$?\s*)?(\$\s*)/i, 'R$ ').replace(/^R\s+\$/, 'R$');
+            // If it's just digits, add "R$" prefix
+            if (/^\d/.test(price)) price = `R$ ${price}`;
+          }
+          return {
+            title: ad.subject || ad.title || '',
+            price,
+            url: ad.url || (ad.listId ? `https://www.olx.com.br/d/item/${ad.listId}` : ''),
+            image: ad.thumbnail || ad.image || (ad.images && ad.images[0]?.original) || '',
+            location: [ad.location?.neighbourhood, ad.location?.municipality, ad.location?.uf].filter(Boolean).join(', ') || ad.locationLabel || '',
+            date: ad.listTime || ad.date || '',
+            source: 'olx-br',
+          };
+        }).filter(item => item.title && item.url);
+      } catch (e) {
+        return null;
+      }
+    }, searchTerm);
+
+    if (nextDataItems && nextDataItems.length > 0) {
+      this.log(`✅ Extracted ${nextDataItems.length} items from __NEXT_DATA__`);
+      return nextDataItems;
+    }
+
+    this.log('⚠️ No __NEXT_DATA__, falling back to DOM extraction...');
+
+    // ── Strategy 2: Wait for and try DOM selectors ──
     try {
       await page.waitForSelector(
-        '[data-ds-component="DS-NewAdCard-horizontal"], [data-ds-component="DS-NewAdCard"], #ad-list, a[data-lurker-detail], section li a, [class*="adCard"], [class*="listing"]',
+        '[data-ds-component="DS-NewAdCard-horizontal"], [data-ds-component="DS-NewAdCard"], #ad-list, a[data-lurker-detail], section li a, [class*="adCard"], [class*="listing"], [data-cy="l-card"], article',
         { timeout: 15000 }
       );
       this.log('✅ Found listing container');
@@ -31,53 +77,33 @@ class OlxBrScraper extends BaseScraper {
       this.log('⚠️ Could not find listing container, proceeding anyway...', 'warn');
     }
 
-    // Log candidate selectors for debugging
-    const containers = await page.evaluate(() => {
-      const candidates = [
-        '[data-ds-component="DS-NewAdCard-horizontal"]',
-        '[data-ds-component="DS-NewAdCard"]',
-        '#ad-list li',
-        '#ad-list > li',
-        'a[data-lurker-detail]',
-        '.olx-ad-card',
-        '[class*="AdCard"]',
-        '[class*="adCard"]',
-        '[class*="ad-card"]',
-        '[class*="listing"]',
-        'section ul li',
-        '[data-cy="l-card"]',
-        'article',
-        'a[href*="/item/"]',
-        'a[href*="/d/"]',
-      ];
-      
-      const found = {};
-      for (const sel of candidates) {
-        const els = document.querySelectorAll(sel);
-        if (els.length > 0) {
-          found[sel] = {
-            count: els.length,
-            firstHtml: els[0].outerHTML.substring(0, 500),
-          };
-        }
-      }
-      return found;
-    });
-
-    this.log(`📋 Candidate selectors found:`);
-    Object.entries(containers).forEach(([sel, info]) => {
-      this.log(`   "${sel}" → ${info.count} elements`);
-    });
-
     const items = await page.evaluate(() => {
       const results = [];
-
-      // Only filter truly sponsored entries (very conservative)
       const SKIP_HREF = /google\.|doubleclick|facebook\.com|analytics|login|cadastro|conta\/|ajuda\//i;
+
+      function extractImage(card) {
+        const imgEls = card.querySelectorAll('img');
+        for (const imgEl of imgEls) {
+          const srcset = imgEl.getAttribute('srcset') || imgEl.getAttribute('data-srcset') || '';
+          if (srcset) {
+            const parts = srcset.split(',').map(s => s.trim().split(/\s+/)[0]).filter(Boolean);
+            if (parts.length > 0) return parts[parts.length - 1];
+          }
+          const src = imgEl.src || imgEl.getAttribute('data-src') || imgEl.getAttribute('data-lazy') || '';
+          if (src && !src.includes('data:image') && !src.includes('placeholder') && !src.includes('no_thumbnail') && src.length > 10) return src;
+        }
+        const bgEl = card.querySelector('[style*="background-image"]');
+        if (bgEl) {
+          const match = bgEl.style.backgroundImage.match(/url\(["']?([^"')]+)["']?\)/);
+          if (match && !match[1].includes('data:image')) return match[1];
+        }
+        return '';
+      }
 
       // Try selectors from most specific to most generic
       let cards = document.querySelectorAll('[data-ds-component="DS-NewAdCard-horizontal"]');
       if (cards.length === 0) cards = document.querySelectorAll('[data-ds-component="DS-NewAdCard"]');
+      if (cards.length === 0) cards = document.querySelectorAll('[data-cy="l-card"]');
       if (cards.length === 0) cards = document.querySelectorAll('a[data-lurker-detail]');
       if (cards.length === 0) cards = document.querySelectorAll('#ad-list > li');
       if (cards.length === 0) cards = document.querySelectorAll('#ad-list li');
@@ -85,110 +111,76 @@ class OlxBrScraper extends BaseScraper {
       if (cards.length === 0) cards = document.querySelectorAll('[class*="AdCard"]');
       if (cards.length === 0) cards = document.querySelectorAll('[class*="adCard"]');
       if (cards.length === 0) cards = document.querySelectorAll('[class*="ad-card"]');
-      if (cards.length === 0) cards = document.querySelectorAll('[data-cy="l-card"]');
       if (cards.length === 0) cards = document.querySelectorAll('section ul li');
       if (cards.length === 0) cards = document.querySelectorAll('article');
 
-      // Super-generic last resort: find all links that look like OLX item pages
+      // Last resort: links to OLX item pages
       if (cards.length === 0) {
-        const allLinks = document.querySelectorAll('a[href*="olx.com.br"]');
-        const itemLinks = [...allLinks].filter(a => {
+        const allLinks = [...document.querySelectorAll('a[href*="olx.com.br"]')];
+        cards = allLinks.filter(a => {
           const h = a.href || '';
           return (h.includes('/item/') || h.includes('/d/')) && !SKIP_HREF.test(h);
         });
-        // Wrap each link in an array-like for the processing below
-        cards = itemLinks;
       }
 
       cards.forEach(card => {
         try {
-          // Skip if explicitly sponsored
           if (card.querySelector('[data-lurker_position="sponsored"]')) return;
           if (card.getAttribute('data-lurker_position') === 'sponsored') return;
           if (card.closest('[data-lurker_position="sponsored"]')) return;
 
           const link = card.querySelector('a[href*="olx.com.br"]') || card.querySelector('a') || card.closest('a') || card;
           const href = link?.href || '';
+          if (!href || SKIP_HREF.test(href)) return;
 
-          // Must have a link, must be OLX
-          if (!href) return;
-          if (SKIP_HREF.test(href)) return;
-
-          // Find title from heading elements or data-component text
           const titleEl = card.querySelector('h2, h3, h4, h5, h6, [data-ds-component="DS-Text"]');
           let title = titleEl?.innerText?.trim() || '';
-
-          // If no heading found, try the card's direct text content (for link-based cards)
           if (!title && card.tagName === 'A') {
             title = card.innerText?.split('\n')[0]?.trim() || '';
           }
-
-          // Must have some title
           if (!title || title.length < 2) return;
 
-          // Price extraction — multiple strategies
           const priceEl = card.querySelector(
             '[data-ds-component="DS-Text"][color="gray-600"], ' +
-            'span[aria-label*="preço"], ' +
-            'span[aria-label*="R\\$"], ' +
-            '.price, ' +
-            '[class*="price"], ' +
-            '[class*="Price"]'
+            'span[aria-label*="preço"], span[aria-label*="R\\$"], ' +
+            '.price, [class*="price"], [class*="Price"]'
           );
           let price = priceEl?.innerText?.trim() || '';
           if (!price) {
-            const cardText = card.innerText || '';
-            const priceMatch = cardText.match(/R\$\s*[\d.,]+/);
+            const priceMatch = (card.innerText || '').match(/R\$\s*[\d.]+(?:,\d{2})?/);
             if (priceMatch) price = priceMatch[0];
           }
 
-          const imgEl = card.querySelector('img');
-          const image = imgEl?.src || imgEl?.getAttribute('data-src') || '';
+          const image = extractImage(card);
 
           const locationEl = card.querySelector(
-            'span[aria-label*="local"], ' +
-            '.location, ' +
-            '[class*="location"], ' +
-            '[class*="Location"]'
+            'span[aria-label*="local"], .location, [class*="location"], [class*="Location"]'
           );
           const location = locationEl?.innerText?.trim() || '';
 
           const dateEl = card.querySelector(
-            '[class*="date"], [class*="Date"], [class*="time"], [class*="Time"], ' +
-            'span[aria-label*="data"]'
+            '[class*="date"], [class*="Date"], [class*="time"], [class*="Time"], span[aria-label*="data"]'
           );
-          const date = dateEl?.innerText?.trim() || '';
+          let date = dateEl?.innerText?.trim() || '';
+          if (!date && location) {
+            const dateMatch = location.match(/(Hoje|Ontem|há\s+\d+\s+\w+|\d{1,2}\s+\w{3}\.?(?:\s+\d{2}:\d{2})?)/i);
+            if (dateMatch) date = dateMatch[1];
+          }
 
-          results.push({
-            title,
-            price,
-            url: href,
-            image,
-            location,
-            date,
-          });
+          results.push({ title, price, url: href, image, location, date, source: 'olx-br' });
         } catch (e) { /* skip */ }
       });
 
       return results;
     });
 
-    // If nothing found, log page content for debugging
     if (items.length === 0) {
       const bodySnippet = await page.evaluate(() => document.body?.innerText?.substring(0, 1500) || '');
       this.log(`⚠️ No items extracted. Body text: ${bodySnippet.replace(/\n/g, ' ').substring(0, 800)}`, 'warn');
-      const pageUrl = page.url();
-      this.log(`⚠️ Current page URL: ${pageUrl}`, 'warn');
+      this.log(`⚠️ Current page URL: ${page.url()}`, 'warn');
     }
 
     this.log(`✅ Extracted ${items.length} items (after filtering)`);
-    if (items.length > 0) {
-      items.slice(0, 3).forEach((item, i) => {
-        const { rawHtml, ...clean } = item;
-        this.log(`   [${i}] ${JSON.stringify(clean)}`);
-      });
-      if (items.length > 3) this.log(`   ... and ${items.length - 3} more items`);
-    }
     return items;
   }
 }

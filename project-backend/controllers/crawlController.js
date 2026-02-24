@@ -7,6 +7,18 @@
 
 import searchOrchestrator from '../services/searchOrchestrator.js';
 
+// ─── SSE helper ──────────────────────────────────────────────────────────────
+
+function sendSSE(res, event, data) {
+  try {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    // flush immediately if supported (e.g. compression middleware)
+    if (typeof res.flush === 'function') res.flush();
+  } catch (_) { /* client already disconnected */ }
+}
+
+// ─── Handlers ────────────────────────────────────────────────────────────────
+
 /**
  * Parallel search across all platforms
  * POST /api/crawl/search
@@ -177,9 +189,87 @@ export const crawlPlatforms = async (req, res) => {
   }
 };
 
+/**
+ * SSE streaming search — streams per-platform results as they arrive.
+ * GET /crawl/search-stream?query=...&platforms=ebay,vinted&vintedCountry=pt
+ *
+ * Events emitted:
+ *   queued          { platforms: string[] }
+ *   loading         { platform: string }
+ *   platform_result { platform, items, stat, status }
+ *   done            { wallTimeMs }
+ *   error           { message }
+ */
+export const crawlSearchStream = async (req, res) => {
+  const { query, platforms: platformsParam, vintedCountry = 'pt' } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ success: false, error: 'query is required' });
+  }
+
+  // ── SSE headers ──────────────────────────────────────────────────
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  // Track whether client disconnected early
+  let closed = false;
+  req.on('close', () => { closed = true; });
+
+  const safeSend = (event, data) => {
+    if (!closed) sendSSE(res, event, data);
+  };
+
+  const platformList = platformsParam
+    ? platformsParam.split(',').map(p => p.trim()).filter(Boolean)
+    : searchOrchestrator.getAvailablePlatforms();
+
+  // Immediately tell the client which platforms are queued
+  safeSend('queued', { platforms: platformList });
+
+  const startTime = Date.now();
+
+  try {
+    await searchOrchestrator.searchWithCallback({
+      query,
+      platforms: platformList,
+      vintedCountry,
+      onPlatformStart: (platform) => {
+        safeSend('loading', { platform });
+      },
+      onPlatformDone: (platform, result) => {
+        const stat = {
+          page: result.page,
+          count: result.items.length,
+          timeMs: result.elapsed,
+          success: !result.error,
+        };
+        const status = !stat.success ? 'failed' : stat.count === 0 ? 'empty' : 'done';
+
+        // Tag items with source platform
+        const items = result.items.map(item => ({
+          ...item,
+          source: item.source || platform,
+          _scrapedAt: new Date().toISOString(),
+        }));
+
+        safeSend('platform_result', { platform, items, stat, status, error: result.error || null });
+      },
+    });
+  } catch (err) {
+    safeSend('error', { message: err.message });
+  }
+
+  safeSend('done', { wallTimeMs: Date.now() - startTime });
+  if (!closed) res.end();
+};
+
 export default {
   crawlSearch,
   crawlSearchGet,
+  crawlSearchStream,
   crawlMore,
   crawlPlatforms,
 };

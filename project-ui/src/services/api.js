@@ -43,6 +43,68 @@ export const crawlSearch = async (query, platforms = null, pages = {}, vintedCou
 };
 
 /**
+ * SSE streaming search — results stream per-platform as each scraper finishes.
+ *
+ * @param {string}   query
+ * @param {string[]|null} platforms  - specific platforms, or null for all
+ * @param {string}   vintedCountry
+ * @param {Object}   callbacks
+ *   .onQueued(platforms)                 - called once with all queued platforms
+ *   .onLoading(platform)                 - called when a platform starts scraping
+ *   .onPlatformResult({platform, items, stat, status, error})
+ *   .onDone({wallTimeMs})               - called after all platforms finish
+ *   .onError(message)                    - called on connection / server error
+ *
+ * @returns {() => void}  abort function — call to close the stream early
+ */
+export const crawlSearchStream = (
+  query,
+  platforms = null,
+  vintedCountry = 'pt',
+  { onQueued, onLoading, onPlatformResult, onDone, onError } = {},
+) => {
+  const params = new URLSearchParams({ query, vintedCountry });
+  if (platforms?.length) params.set('platforms', platforms.join(','));
+
+  const url = `${API_BASE_URL}/crawl/search-stream?${params}`;
+  const es = new EventSource(url);
+
+  const close = () => { try { es.close(); } catch (_) {} };
+
+  es.addEventListener('queued', (e) => {
+    try { onQueued?.(JSON.parse(e.data).platforms); } catch (_) {}
+  });
+
+  es.addEventListener('loading', (e) => {
+    try { onLoading?.(JSON.parse(e.data).platform); } catch (_) {}
+  });
+
+  es.addEventListener('platform_result', (e) => {
+    try { onPlatformResult?.(JSON.parse(e.data)); } catch (_) {}
+  });
+
+  es.addEventListener('done', (e) => {
+    try { onDone?.(JSON.parse(e.data)); } catch (_) {}
+    close();
+  });
+
+  es.addEventListener('error', (e) => {
+    try {
+      if (e.data) onError?.(JSON.parse(e.data).message);
+    } catch (_) {}
+    close();
+  });
+
+  // Network-level error (e.g. server not running)
+  es.onerror = () => {
+    onError?.('Could not connect to search stream');
+    close();
+  };
+
+  return close;
+};
+
+/**
  * Fetch more items from specific platforms (next page)
  * @param {string} query - Search term
  * @param {string[]} platforms - Which platforms to fetch more from
@@ -52,11 +114,13 @@ export const crawlSearch = async (query, platforms = null, pages = {}, vintedCou
  */
 export const crawlMore = async (query, platforms, pages, existingItems = [], vintedCountry = 'pt') => {
   try {
+    // Send only URLs/IDs for dedup instead of full items (avoids payload size issues)
+    const existingUrls = existingItems.map(item => item.url).filter(Boolean);
     const response = await axios.post(`${API_BASE_URL}/crawl/more`, {
       query,
       platforms,
       pages,
-      existingItems,
+      existingItems: existingUrls.map(url => ({ url })),
       vintedCountry,
     });
     return response.data.data;

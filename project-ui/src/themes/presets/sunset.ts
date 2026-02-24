@@ -114,7 +114,7 @@ export const sunsetTheme: Theme = {
       text: {
         primary: '#fef3c7',
         secondary: '#fdba74',
-        disabled: '#78716c',
+        disabled: '#a8a29e',
         inverse: '#1c1917',
       },
       border: {

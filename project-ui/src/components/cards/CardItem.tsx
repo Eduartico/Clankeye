@@ -3,6 +3,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ImageCarousel from "./ImageCarousel";
 import PlatformBadge from "./PlatformBadge";
 import DuplicateBadge from "./DuplicateBadge";
+import { GlassCard } from "../glass";
 import { normalizePrice } from "../../utils/priceUtils";
 
 interface CardItemProps {
@@ -20,54 +21,55 @@ export default function CardItem({ item, isWishlisted, onDuplicateClick }: CardI
 
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.button === 0 || event.button === 1) {
-      // Left-click (0) or Middle-click (1)
       const newTab = window.open(item.url, "_blank");
-      if (newTab) {
-        newTab.opener = null; // Prevents potential security vulnerabilities
-      }
+      if (newTab) newTab.opener = null;
     }
   };
 
   return (
-    <div className={`relative w-full max-w-[420px] h-[450px] bg-white dark:bg-zinc-900 rounded-3xl p-5 group hover:scale-[1.02] transition ease-in-out duration-150 border-2 border-gray-300 dark:border-[#393939] hover:shadow-lg hover:shadow-primary-500 ${
-      isWishlisted ? "wishlist-glow" : ""
-    }`}>
-      {/* Duplicate badge (top-right) */}
-      {item.duplicateGroupId && (
-        <DuplicateBadge
-          duplicateCount={item.duplicateCount}
-          duplicatePlatforms={item.duplicatePlatforms || []}
-          currentPlatform={item.source}
-          onClick={() => onDuplicateClick?.(item)}
-        />
-      )}
+    /* Outer wrapper carries wishlist-glow so the shimmer isn't clipped by GlassCard's overflow:hidden */
+    <div className={`relative w-full rounded-[24px] ${isWishlisted ? "wishlist-glow" : ""}`}>
+      <GlassCard variant="surface" className="w-full group">
+        {/* ── Image section: fills full width, height determined by aspect-ratio ─ */}
+        <div className="relative w-full overflow-hidden rounded-t-[23px]" style={{ aspectRatio: '4/3', minHeight: '160px' }}>
+          <ImageCarousel images={images} />
 
-      <div className="w-full h-full flex flex-col gap-4">
-        <ImageCarousel images={images} />
-        <div className="h-full flex flex-col justify-between gap-2">
-          <div className="flex flex-col gap-1">
-            {/* Platform badge */}
-            {item.source && (
-              <div className="flex">
-                <PlatformBadge platform={item.source} />
-              </div>
-            )}
-            <h5 className="text-2xl font-bold text-wrap break-all min-h-24 h-24 overflow-y-auto tracking-tight text-slate-900 dark:text-white">
-              {item.title}
-            </h5>
-          </div>
+          {/* Platform badge — overlaid bottom-left of image */}
+          {item.source && (
+            <div className="absolute bottom-2 left-2 z-10">
+              <PlatformBadge platform={item.source} />
+            </div>
+          )}
 
-          <div className="h-full flex px-5 items-center justify-between text-3xl font-bold text-wrap break-all overflow-y-auto tracking-tight text-slate-900 dark:text-primary-500">
-            <h5>{normalizePrice(item.price).display}</h5>
+          {/* Duplicate badge — overlaid top-right of image */}
+          {item.duplicateGroupId && (
+            <DuplicateBadge
+              duplicateCount={item.duplicateCount}
+              duplicatePlatforms={item.duplicatePlatforms || []}
+              currentPlatform={item.source}
+              onClick={() => onDuplicateClick?.(item)}
+            />
+          )}
+        </div>
+
+        {/* ── Info section (compact, below image) ───────────────────── */}
+        <div className="shrink-0 px-4 py-3 flex flex-col gap-1 border-t border-white/10 dark:border-white/5 rounded-b-[23px]">
+          <h5 className="text-sm font-semibold text-text-primary line-clamp-2 leading-snug">
+            {item.title}
+          </h5>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-lg font-bold tracking-tight text-primary-500">
+              {normalizePrice(item.price).display}
+            </span>
             <div
               className="text-primary-500 transition ease-in-out duration-150 cursor-pointer hover:text-primary-600"
               onMouseDown={handleClick}
             >
-              <OpenInNewIcon sx={{ fontSize: 30 }} />
+              <OpenInNewIcon sx={{ fontSize: 22 }} />
             </div>
           </div>
         </div>
-      </div>
+      </GlassCard>
     </div>
   );
 }
