@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="project-ui/dist/logo.png" alt="Clankeye" width="210" />
+  <img src="project-ui/dist/Logo.png" alt="Clankeye" width="210" />
 </p>
 
 <h1 align="center">Clankeye</h1>
