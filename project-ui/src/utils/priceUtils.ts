@@ -135,8 +135,18 @@ function extractNumber(raw: string): string {
     // European: dots are thousands, comma is decimal
     numStr = numStr.replace(/\./g, "").replace(",", ".");
   } else if (lastDot > lastComma) {
-    // US: commas are thousands, dot is decimal
-    numStr = numStr.replace(/,/g, "");
+    if (lastComma < 0) {
+      // Only dots, no commas — check if 3 digits after the last dot
+      // (thousands separator, e.g. "2.500" = 2500, not 2.5)
+      const afterDot = numStr.length - lastDot - 1;
+      if (afterDot === 3) {
+        numStr = numStr.replace(/\./g, "");
+      }
+      // else it's a decimal dot (e.g. "2.50"), leave as-is
+    } else {
+      // US: commas are thousands, dot is decimal
+      numStr = numStr.replace(/,/g, "");
+    }
   } else {
     // Only one type of separator — if exactly 3 digits after, it's thousands
     if (lastComma >= 0) {

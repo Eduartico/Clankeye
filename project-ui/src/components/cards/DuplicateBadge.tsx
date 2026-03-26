@@ -51,7 +51,12 @@ export default function DuplicateBadge({
 
   return (
     <div
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onClick?.();
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
       className="absolute top-3 right-3 z-10 cursor-pointer group/dup"
       title={`Also found on: ${otherPlatforms
         .map((p) => PLATFORM_LABELS[p] || p)

@@ -124,6 +124,15 @@ function AuroraInner({
   const c1 = useMemo(() => hexToGL(colorStops[1]), [colorStops[1]]);
   const c2 = useMemo(() => hexToGL(colorStops[2]), [colorStops[2]]);
 
+  // Store scalar props in refs so the animation loop reads the latest values
+  const blendRef = useRef(blend);
+  const amplitudeRef = useRef(amplitude);
+  const speedRef = useRef(speed);
+
+  useEffect(() => { blendRef.current = blend; }, [blend]);
+  useEffect(() => { amplitudeRef.current = amplitude; }, [amplitude]);
+  useEffect(() => { speedRef.current = speed; }, [speed]);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -149,9 +158,9 @@ function AuroraInner({
         uColor0: { value: c0 },
         uColor1: { value: c1 },
         uColor2: { value: c2 },
-        uBlend: { value: blend },
-        uAmplitude: { value: amplitude },
-        uSpeed: { value: speed },
+        uBlend: { value: blendRef.current },
+        uAmplitude: { value: amplitudeRef.current },
+        uSpeed: { value: speedRef.current },
       },
       transparent: true,
       depthTest: false,
@@ -169,13 +178,13 @@ function AuroraInner({
     let start = performance.now();
     const loop = () => {
       program.uniforms.uTime.value = (performance.now() - start) / 1000;
-      // Live-update colours & params each frame (cheap)
+      // Live-update colours & params each frame from refs (cheap)
       program.uniforms.uColor0.value = c0;
       program.uniforms.uColor1.value = c1;
       program.uniforms.uColor2.value = c2;
-      program.uniforms.uBlend.value = blend;
-      program.uniforms.uAmplitude.value = amplitude;
-      program.uniforms.uSpeed.value = speed;
+      program.uniforms.uBlend.value = blendRef.current;
+      program.uniforms.uAmplitude.value = amplitudeRef.current;
+      program.uniforms.uSpeed.value = speedRef.current;
       renderer.render({ scene: mesh });
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -192,10 +201,7 @@ function AuroraInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colorStops[0], colorStops[1], colorStops[2]]);
 
-  // Update scalar uniforms without recreating the context
-  useEffect(() => {
-    // Handled inside animation loop — no-op here for API stability
-  }, [blend, amplitude, speed]);
+  // Scalar uniforms (blend, amplitude, speed) update via refs inside the animation loop
 
   return (
     <div

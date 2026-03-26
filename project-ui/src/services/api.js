@@ -122,6 +122,8 @@ export const crawlMore = async (query, platforms, pages, existingItems = [], vin
       pages,
       existingItems: existingUrls.map(url => ({ url })),
       vintedCountry,
+    }, {
+      timeout: 180_000, // 3 minutes — scraping all platforms can take a while
     });
     return response.data.data;
   } catch (error) {

@@ -12,15 +12,32 @@ class OlxBrScraper extends BaseScraper {
 
   buildSearchUrl(searchTerm, page = 1) {
     // OLX BR national search — /brasil?q=...
-    // sf=1 sorts by most recent
+    // search[order]=created_at:desc sorts by most recent
     const encoded = encodeURIComponent(searchTerm);
-    let url = `https://www.olx.com.br/brasil?q=${encoded}&sf=1`;
+    let url = `https://www.olx.com.br/brasil?q=${encoded}&search%5Border%5D=created_at%3Adesc`;
     if (page > 1) url += `&o=${page}`;
     return url;
   }
 
   async extractItems(page, searchTerm) {
     this.log('🔎 Looking for OLX BR listing elements...');
+
+    // Scroll incrementally to the page bottom to trigger lazy-loading of ALL
+    // ad cards and images before we try to extract them from the DOM.
+    await page.evaluate(async () => {
+      const STEP = 600;
+      const DELAY = 200;
+      let currentPos = 0;
+      while (currentPos < document.body.scrollHeight) {
+        window.scrollTo(0, currentPos);
+        await new Promise(r => setTimeout(r, DELAY));
+        currentPos += STEP;
+      }
+      window.scrollTo(0, document.body.scrollHeight);
+      await new Promise(r => setTimeout(r, 300));
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(1200);
 
     // ── Strategy 1: Try __NEXT_DATA__ JSON hydration (most reliable) ──
     const nextDataItems = await page.evaluate((term) => {
@@ -31,9 +48,22 @@ class OlxBrScraper extends BaseScraper {
         const props = json?.props?.pageProps;
         if (!props) return null;
 
-        // Try multiple paths where ads might live
-        const ads = props.ads || props.searchResult?.ads || props.adList || props.listing?.listing || props.listing?.ads || [];
-        if (!Array.isArray(ads) || ads.length === 0) return null;
+        // Try multiple paths where ads might live (OLX BR has changed structure over time)
+        const ads =
+          props.ads ||
+          props.searchResult?.ads ||
+          props.adList ||
+          props.listing?.listing ||
+          props.listing?.ads ||
+          props.initialState?.listing?.data?.ads ||
+          props.data?.ads ||
+          props.search?.ads ||
+          [];
+        if (!Array.isArray(ads) || ads.length === 0) {
+          // Log available top-level keys so we can update paths if OLX changes structure
+          console.log('[OlxBr] __NEXT_DATA__ pageProps keys:', Object.keys(props).join(', '));
+          return null;
+        }
 
         return ads.map(ad => {
           // Normalize price to always use "R$" prefix (OLX BR sometimes returns just "$")

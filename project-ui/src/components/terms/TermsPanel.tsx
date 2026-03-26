@@ -122,20 +122,26 @@ interface TermsPanelProps {
 }
 
 export default function TermsPanel({ items, onTermsChange }: TermsPanelProps) {
-  const [wishlist, setWishlist] = useState<string[]>([]);
-  const [filter, setFilter] = useState<string[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>(() => {
+    try { const raw = localStorage.getItem("clankeye-wishlist"); return raw ? JSON.parse(raw) : []; } catch { return []; }
+  });
+  const [filter, setFilter] = useState<string[]>(() => {
+    try { const raw = localStorage.getItem("clankeye-filter"); return raw ? JSON.parse(raw) : []; } catch { return []; }
+  });
   const [wishlistOpen, setWishlistOpen] = useState(true);
   const [filterOpen, setFilterOpen] = useState(true);
 
-  // Load terms from backend on mount
+  // Load terms from backend on mount (overrides localStorage cache with server truth)
   useEffect(() => {
     getWishlistTerms().then(setWishlist).catch(() => {});
     getFilterTerms().then(setFilter).catch(() => {});
   }, []);
 
-  // Notify parent whenever terms change
+  // Persist terms to localStorage as cache + notify parent
   useEffect(() => {
     onTermsChange?.(wishlist, filter);
+    try { localStorage.setItem("clankeye-wishlist", JSON.stringify(wishlist)); } catch {}
+    try { localStorage.setItem("clankeye-filter", JSON.stringify(filter)); } catch {}
   }, [wishlist, filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Count how many items match each term ──────────────────────
@@ -160,23 +166,39 @@ export default function TermsPanel({ items, onTermsChange }: TermsPanelProps) {
   // ─── CRUD handlers ────────────────────────────────────────────
 
   const handleAddWishlist = async (term: string) => {
-    const updated = await addWishlistTerm(term);
-    setWishlist(updated);
+    try {
+      const updated = await addWishlistTerm(term);
+      setWishlist(updated);
+    } catch (e) {
+      console.error('[TermsPanel] Failed to add wishlist term:', e);
+    }
   };
 
   const handleRemoveWishlist = async (term: string) => {
-    const updated = await removeWishlistTerm(term);
-    setWishlist(updated);
+    try {
+      const updated = await removeWishlistTerm(term);
+      setWishlist(updated);
+    } catch (e) {
+      console.error('[TermsPanel] Failed to remove wishlist term:', e);
+    }
   };
 
   const handleAddFilter = async (term: string) => {
-    const updated = await addFilterTerm(term);
-    setFilter(updated);
+    try {
+      const updated = await addFilterTerm(term);
+      setFilter(updated);
+    } catch (e) {
+      console.error('[TermsPanel] Failed to add filter term:', e);
+    }
   };
 
   const handleRemoveFilter = async (term: string) => {
-    const updated = await removeFilterTerm(term);
-    setFilter(updated);
+    try {
+      const updated = await removeFilterTerm(term);
+      setFilter(updated);
+    } catch (e) {
+      console.error('[TermsPanel] Failed to remove filter term:', e);
+    }
   };
 
   return (

@@ -12,7 +12,8 @@ class EbayScraper extends BaseScraper {
 
   buildSearchUrl(searchTerm, page = 1) {
     // _sop=10 sorts by "Newly listed" (most recent first)
-    let url = `${this.domain}/sch/i.html?_nkw=${encodeURIComponent(searchTerm)}&_sacat=0&_from=R40&_sop=10`;
+    // _ipg=240 requests 240 items per page (maximum eBay allows)
+    let url = `${this.domain}/sch/i.html?_from=R40&_nkw=${encodeURIComponent(searchTerm)}&_sacat=0&_sop=10&_ipg=240`;
     if (page > 1) url += `&_pgn=${page}`;
     return url;
   }
@@ -62,10 +63,20 @@ class EbayScraper extends BaseScraper {
     const items = await page.evaluate(() => {
       const results = [];
       
+      // Scope to the main search results river only — avoids picking up
+      // "Items you may also like" / sponsored recommendation rows that eBay
+      // appends below actual search results and that are often completely unrelated.
+      const mainContainer =
+        document.querySelector('#srp-river-results') ||
+        document.querySelector('.srp-results') ||
+        document.querySelector('[aria-label="Results"]') ||
+        document;
+
       // Try new eBay layout first (s-card), then fallback to legacy (s-item)
-      let cards = document.querySelectorAll('li.s-card[data-listingid]');
-      if (cards.length === 0) cards = document.querySelectorAll('li[data-viewport].s-card');
-      if (cards.length === 0) cards = document.querySelectorAll('.s-item');
+      let cards = mainContainer.querySelectorAll('li.s-card[data-listingid]');
+      if (cards.length === 0) cards = mainContainer.querySelectorAll('li[data-viewport].s-card');
+      if (cards.length === 0) cards = mainContainer.querySelectorAll('li.s-card');
+      if (cards.length === 0) cards = mainContainer.querySelectorAll('.s-item:not(.s-item--placeholder)');
 
       cards.forEach(card => {
         try {

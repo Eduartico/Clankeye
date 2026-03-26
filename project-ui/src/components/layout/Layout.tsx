@@ -52,8 +52,8 @@ function LayoutInner({ children }: LayoutProps) {
 
   // Aurora colour stops, softly blended into the mode background
   const colorStops = useMemo((): [string, string, string] => {
-    const modeBase = isDarkMode ? "#121b2d" : "#e7eef8";
-    const mute = isDarkMode ? 0.34 : 0.28;
+    const modeBase = isDarkMode ? "#121b2d" : "#f0f4fa";
+    const mute = isDarkMode ? 0.18 : 0.10;
 
     return [
       mixHex(primaryDark, modeBase, mute),
@@ -68,9 +68,9 @@ function LayoutInner({ children }: LayoutProps) {
       <div className="fixed inset-0 z-0 pointer-events-none">
         <Aurora
           colorStops={colorStops}
-          blend={isDarkMode ? 0.58 : 0.5}
-          amplitude={0.8}
-          speed={0.4}
+          blend={isDarkMode ? 0.55 : 0.45}
+          amplitude={1.2}
+          speed={0.6}
         />
       </div>
 

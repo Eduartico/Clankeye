@@ -205,11 +205,9 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
           : `hsl(0 0% 100% / ${backgroundOpacity})`,
         backdropFilter: `url(#${filterId}) saturate(${saturation})`,
         boxShadow: isDarkMode
-          ? `0 0 2px 1px color-mix(in oklch, white, transparent 65%) inset,
-             0 0 10px 4px color-mix(in oklch, white, transparent 85%) inset,
+          ? `0 0 1px 0 rgba(255,255,255,0.06) inset,
              0px 4px 16px rgba(17,17,26,0.06), 0px 8px 24px rgba(17,17,26,0.06)`
-          : `0 0 2px 1px color-mix(in oklch, black, transparent 85%) inset,
-             0 0 10px 4px color-mix(in oklch, black, transparent 92%) inset,
+          : `0 0 1px 0 rgba(255,255,255,0.4) inset,
              0px 4px 16px rgba(17,17,26,0.04), 0px 8px 24px rgba(17,17,26,0.04)`,
       };
     }
@@ -222,26 +220,26 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
             background: `rgba(10, 15, 30, ${Math.min(backgroundOpacity * 2 + 0.04, 0.55)})`,
             backdropFilter:        `blur(${blur}px) saturate(${1 + saturation * 0.6})`,
             WebkitBackdropFilter:  `blur(${blur}px) saturate(${1 + saturation * 0.6})`,
-            border: "1px solid rgba(255,255,255,0.10)",
+            border: "1px solid rgba(255,255,255,0.06)",
             boxShadow:
-              "inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(255,255,255,0.05)",
+              "inset 0 1px 0 rgba(255,255,255,0.04)",
           }
         : {
             ...base,
-            background: `rgba(255, 255, 255, ${Math.min(backgroundOpacity * 2 + 0.06, 0.55)})`,
+            background: `rgba(255, 255, 255, ${Math.min(backgroundOpacity * 2 + 0.06, 0.50)})`,
             backdropFilter:        `blur(${blur}px) saturate(${1 + saturation * 0.6})`,
             WebkitBackdropFilter:  `blur(${blur}px) saturate(${1 + saturation * 0.6})`,
-            border: "1px solid rgba(255,255,255,0.32)",
+            border: "1px solid rgba(255,255,255,0.30)",
             boxShadow:
-              "inset 0 1px 0 rgba(255,255,255,0.50), inset 0 -1px 0 rgba(255,255,255,0.25)",
+              "inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 3px rgba(0,0,0,0.04)",
           };
     }
 
     // Last resort: semi-opaque solid
     return {
       ...base,
-      background: isDarkMode ? "rgba(14, 20, 38, 0.82)" : "rgba(255, 255, 255, 0.82)",
-      border: "1px solid rgba(255,255,255,0.18)",
+      background: isDarkMode ? "rgba(14, 20, 38, 0.75)" : "rgba(255, 255, 255, 0.55)",
+      border: isDarkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.25)",
     };
   };
 

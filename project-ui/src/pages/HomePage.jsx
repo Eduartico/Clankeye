@@ -17,9 +17,24 @@ import {
   CheckCircle2,
   CalendarDays,
   Filter,
+  Star,
+  Focus,
 } from "lucide-react";
 
 const ALL_PLATFORMS = DEFAULT_PLATFORM_CONFIGS.map((p) => p.id);
+
+// ─── localStorage helpers ───────────────────────────────────────
+const LS_PREFIX = "clankeye-";
+function lsGet(key, fallback) {
+  try {
+    const raw = localStorage.getItem(LS_PREFIX + key);
+    if (raw === null) return fallback;
+    return JSON.parse(raw);
+  } catch { return fallback; }
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); } catch {}
+}
 
 export default function HomePage() {
   const [items, setItems] = useState([]);
@@ -33,12 +48,19 @@ export default function HomePage() {
   const [selectedDuplicateItem, setSelectedDuplicateItem] = useState(null);
   const [meta, setMeta] = useState(null);
 
-  // Platform sidebar state
-  const [selectedPlatforms, setSelectedPlatforms] = useState(ALL_PLATFORMS);
-  const [vintedCountry, setVintedCountry] = useState("pt");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(240);
-  const [platformOrder, setPlatformOrder] = useState(DEFAULT_PLATFORM_CONFIGS);
+  // Platform sidebar state – restored from localStorage
+  const [selectedPlatforms, setSelectedPlatforms] = useState(() => lsGet("selected-platforms", ALL_PLATFORMS));
+  const [vintedCountry, setVintedCountry] = useState(() => lsGet("vinted-country", "pt"));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => lsGet("sidebar-collapsed", false));
+  const [sidebarWidth, setSidebarWidth] = useState(() => lsGet("sidebar-width", 240));
+  const [platformOrder, setPlatformOrder] = useState(() => {
+    const stored = lsGet("platform-order", null);
+    if (!stored) return DEFAULT_PLATFORM_CONFIGS;
+    // Merge stored order with current defaults so new platforms are included
+    const knownIds = new Set(stored.map((p) => p.id));
+    const extras = DEFAULT_PLATFORM_CONFIGS.filter((p) => !knownIds.has(p.id));
+    return [...stored, ...extras];
+  });
 
   // Per-platform search status for sidebar icons
   const [platformStatus, setPlatformStatus] = useState({});
@@ -54,6 +76,26 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [preloading, setPreloading] = useState(false);
   const preloadingRef = useRef(false);
+
+  // Track pages that failed to load — uses counter for retry limit instead of permanent block
+  const failedPagesRef = useRef(new Map()); // Map<pageNum, retryCount>
+  const MAX_PAGE_RETRIES = 2;
+  // Expose last preload error to the UI so we can show a retry button
+  const [preloadError, setPreloadError] = useState(null);
+
+  // Ref mirrors of state used inside preloadPage to avoid stale closure / dep cycles
+  const pagesRef = useRef({});
+  const pageItemsRef = useRef({});
+  const exhaustedRef = useRef(new Set());
+  const queryRef = useRef(query);
+  const vintedCountryRef = useRef(vintedCountry);
+
+  // Keep refs in sync
+  useEffect(() => { pagesRef.current = pages; }, [pages]);
+  useEffect(() => { pageItemsRef.current = pageItems; }, [pageItems]);
+  useEffect(() => { exhaustedRef.current = exhaustedPlatforms; }, [exhaustedPlatforms]);
+  useEffect(() => { queryRef.current = query; }, [query]);
+  useEffect(() => { vintedCountryRef.current = vintedCountry; }, [vintedCountry]);
 
   // Debounce ref to prevent triple search
   const searchRef = useRef(null);
@@ -163,13 +205,16 @@ export default function HomePage() {
   const [filterTerms, setFilterTerms] = useState([]);
 
   // Grid columns control
-  const [gridColumns, setGridColumns] = useState(4);
+  const [gridColumns, setGridColumns] = useState(() => lsGet("grid-columns", 4));
 
   // Per-platform visibility (toggled from stats bar)
   const [hiddenPlatforms, setHiddenPlatforms] = useState(new Set());
 
   // Toggle whether filter terms are applied to the grid
-  const [showFiltered, setShowFiltered] = useState(false);
+  const [showFiltered, setShowFiltered] = useState(() => lsGet("show-filtered", false));
+
+  // Toggle whether wishlisted items are shown first
+  const [showWishlistFirst, setShowWishlistFirst] = useState(() => lsGet("wishlist-first", false));
 
   // ─── Sidebar resize drag ────────────────────────────────────────
   const sidebarResizing = useRef(false);
@@ -192,20 +237,31 @@ export default function HomePage() {
     document.addEventListener("mouseup", onMouseUp);
   }, [sidebarWidth]);
 
-  // Memoised: apply filter + platform visibility + wishlist marking
+  // ─── Persist UI state to localStorage ──────────────────────────
+  useEffect(() => { lsSet("selected-platforms", selectedPlatforms); }, [selectedPlatforms]);
+  useEffect(() => { lsSet("vinted-country", vintedCountry); }, [vintedCountry]);
+  useEffect(() => { lsSet("sidebar-collapsed", sidebarCollapsed); }, [sidebarCollapsed]);
+  useEffect(() => { lsSet("sidebar-width", sidebarWidth); }, [sidebarWidth]);
+  useEffect(() => { lsSet("platform-order", platformOrder); }, [platformOrder]);
+  useEffect(() => { lsSet("grid-columns", gridColumns); }, [gridColumns]);
+  useEffect(() => { lsSet("show-filtered", showFiltered); }, [showFiltered]);
+  useEffect(() => { lsSet("wishlist-first", showWishlistFirst); }, [showWishlistFirst]);
+
+  // Memoised: apply filter + platform visibility + wishlist marking + wishlist-first sort
   const { visibleItems, wishlistedIds } = useMemo(() => {
-    const lowerFilter = showFiltered ? [] : filterTerms.map((t) => t.toLowerCase());
-    const lowerWishlist = wishlistTerms.map((t) => t.toLowerCase());
+    // Stable unique ID for each item — always prefer URL since it's unique per listing
+    const itemKey = (item) => item.url || item.id || `${item.source}-${item.externalId}`;
+
+    // Filter out empty/whitespace-only terms to avoid false matches
+    const lowerFilter = showFiltered ? [] : filterTerms.map((t) => t.toLowerCase().trim()).filter(Boolean);
+    const lowerWishlist = wishlistTerms.map((t) => t.toLowerCase().trim()).filter(Boolean);
 
     const matchesAny = (item, terms) => {
-      const searchable = [
-        item.title || "",
-        item.description || "",
-        item.category || "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      return terms.some((t) => searchable.includes(t));
+      if (terms.length === 0) return false;
+      const title = (item.title || "").toLowerCase();
+      const desc  = (item.description || "").toLowerCase();
+      const cat   = (item.category || "").toLowerCase();
+      return terms.some((t) => title.includes(t) || desc.includes(t) || cat.includes(t));
     };
 
     // Remove filter-matched items (unless showFiltered) and hidden platform items
@@ -218,12 +274,26 @@ export default function HomePage() {
     const wIds = new Set();
     for (const item of filtered) {
       if (matchesAny(item, lowerWishlist)) {
-        wIds.add(item.id || `${item.source}-${item.externalId}`);
+        wIds.add(itemKey(item));
       }
     }
 
+    // If "show wishlist first" is on, move wishlisted items to the top
+    if (showWishlistFirst && wIds.size > 0) {
+      const wishlisted = [];
+      const rest = [];
+      for (const item of filtered) {
+        if (wIds.has(itemKey(item))) {
+          wishlisted.push(item);
+        } else {
+          rest.push(item);
+        }
+      }
+      return { visibleItems: [...wishlisted, ...rest], wishlistedIds: wIds };
+    }
+
     return { visibleItems: filtered, wishlistedIds: wIds };
-  }, [items, filterTerms, wishlistTerms, hiddenPlatforms, showFiltered]);
+  }, [items, filterTerms, wishlistTerms, hiddenPlatforms, showFiltered, showWishlistFirst]);
 
   // ─── (auto-search removed — was for testing only) ───────────
 
@@ -240,6 +310,8 @@ export default function HomePage() {
       setCurrentPage(1);
       setPreloading(false);
       preloadingRef.current = false;
+      failedPagesRef.current = new Map();
+      setPreloadError(null);
       return;
     }
 
@@ -297,10 +369,39 @@ export default function HomePage() {
             if (stat.count === 0) exhausted.add(platform);
           },
 
-          onDone: ({ wallTimeMs }) => {
+          onDone: ({ wallTimeMs, duplicateGroups: groups }) => {
             if (thisSearch.cancelled) return;
             // All platforms finished — sort everything by date and display
-            const sorted = sortByDate(accumulatedItems);
+            let sorted = sortByDate(accumulatedItems);
+
+            // Annotate items with duplicate group info if available
+            if (groups?.length > 0) {
+              const lookup = new Map();
+              for (const g of groups) {
+                for (const dupItem of g.items) {
+                  lookup.set(dupItem.id, {
+                    groupId: g.groupId,
+                    // Count of OTHER duplicate items (exclude self)
+                    duplicateCount: g.itemCount - 1,
+                    platforms: g.platforms,
+                  });
+                }
+              }
+              sorted = sorted.map(item => {
+                const info = lookup.get(item.id || item.externalId);
+                if (info) {
+                  return {
+                    ...item,
+                    duplicateGroupId: info.groupId,
+                    duplicateCount: info.duplicateCount,
+                    duplicatePlatforms: info.platforms,
+                  };
+                }
+                return item;
+              });
+              setDuplicateGroups(groups);
+            }
+
             setItems(sorted);
             setPageItems({ 1: sorted });
             setCurrentPage(1);
@@ -338,21 +439,34 @@ export default function HomePage() {
 
   /**
    * Preload the next page of results in the background.
-   * Calls crawlMore for all non-exhausted platforms (except wallapop which has no pagination).
+   * Uses refs to read latest state, avoiding dependency cycles that cause infinite loops.
    */
   const preloadPage = useCallback(
     async (pageNum) => {
-      if (preloadingRef.current || !query) return;
+      console.log(`[Preload] preloadPage(${pageNum}) called — preloadingRef=${preloadingRef.current}, query=${!!queryRef.current}, failedPages=${JSON.stringify([...failedPagesRef.current])}`);
+      if (preloadingRef.current || !queryRef.current) {
+        console.log(`[Preload] Skipped: preloadingRef=${preloadingRef.current}, queryRef=${!!queryRef.current}`);
+        return;
+      }
+      const retries = failedPagesRef.current.get(pageNum) || 0;
+      if (retries >= MAX_PAGE_RETRIES) {
+        console.log(`[Preload] Skipped: page ${pageNum} failed ${retries} times (max ${MAX_PAGE_RETRIES})`);
+        return;
+      }
+
       preloadingRef.current = true;
       setPreloading(true);
+      setPreloadError(null);
 
       try {
-        // Skip wallapop (infinite scroll, no pages) and exhausted platforms
-        const platformsToFetch = Object.keys(pages).filter(
-          (p) => !exhaustedPlatforms.has(p) && p !== 'wallapop'
+        // Include ALL non-exhausted platforms (including wallapop for scroll-based pagination)
+        const platformsToFetch = Object.keys(pagesRef.current).filter(
+          (p) => !exhaustedRef.current.has(p)
         );
+        console.log(`[Preload] Platforms to fetch: [${platformsToFetch}], pages=${JSON.stringify(pagesRef.current)}, exhausted=[${[...exhaustedRef.current]}]`);
 
         if (platformsToFetch.length === 0) {
+          console.log('[Preload] No platforms to fetch — all exhausted');
           return;
         }
 
@@ -361,22 +475,34 @@ export default function HomePage() {
         platformsToFetch.forEach((p) => { nextPages[p] = pageNum; });
 
         // Gather all existing items across all loaded pages for dedup
-        const allExistingItems = Object.values(pageItems).flat();
+        const allExistingItems = Object.values(pageItemsRef.current).flat();
+        console.log(`[Preload] Sending crawlMore: query="${queryRef.current}", ${platformsToFetch.length} platforms, ${allExistingItems.length} existing items`);
 
-        const data = await crawlMore(query, platformsToFetch, nextPages, allExistingItems, vintedCountry);
+        const data = await crawlMore(queryRef.current, platformsToFetch, nextPages, allExistingItems, vintedCountryRef.current);
+        console.log(`[Preload] crawlMore returned: ${data.newItems?.length ?? 0} new items, stats=${JSON.stringify(data.meta)}`);
 
         if (data.newItems?.length > 0) {
           const sortedNew = sortByDate(data.newItems);
           setPageItems((prev) => ({ ...prev, [pageNum]: sortedNew }));
+        } else {
+          // Mark page as empty so we don't keep trying
+          setPageItems((prev) => ({ ...prev, [pageNum]: [] }));
         }
 
         // Update pages tracking
         setPages((prev) => ({ ...prev, ...nextPages }));
 
         // Update exhausted platforms
-        const newExhausted = new Set(exhaustedPlatforms);
+        setExhaustedPlatforms((prev) => {
+          const newExhausted = new Set(prev);
+          for (const [platform, stat] of Object.entries(data.platformStats || {})) {
+            if (stat.count === 0) newExhausted.add(platform);
+          }
+          return newExhausted;
+        });
+
+        // Update platform stats
         for (const [platform, stat] of Object.entries(data.platformStats || {})) {
-          if (stat.count === 0) newExhausted.add(platform);
           setPlatformStats((prev) => ({
             ...prev,
             [platform]: {
@@ -387,19 +513,23 @@ export default function HomePage() {
             },
           }));
         }
-        setExhaustedPlatforms(newExhausted);
 
         if (data.duplicateGroups) {
           setDuplicateGroups(data.duplicateGroups);
         }
       } catch (err) {
-        console.error("Preload page error:", err);
+        console.error("[Preload] Error:", err);
+        // Track retry count — allows limited retries before giving up
+        const prevRetries = failedPagesRef.current.get(pageNum) || 0;
+        failedPagesRef.current.set(pageNum, prevRetries + 1);
+        setPreloadError({ page: pageNum, message: err.message, retries: prevRetries + 1 });
       } finally {
         preloadingRef.current = false;
         setPreloading(false);
+        console.log(`[Preload] Done — preloadingRef reset to false`);
       }
     },
-    [query, pages, pageItems, exhaustedPlatforms, vintedCountry, sortByDate]
+    [sortByDate] // Only depends on stable sortByDate — reads everything else from refs
   );
 
   /**
@@ -419,26 +549,31 @@ export default function HomePage() {
    * Auto-preload effect:
    * When the user is on a loaded page and the next page hasn't been loaded yet,
    * automatically start preloading it in the background.
-   * Condition: current page loaded + next page not loaded + not already preloading + not all exhausted
+   * Uses a simple interval check to avoid dependency on preloadPage reference.
    */
-  // Wallapop is always "exhausted" for pagination (infinite scroll, no pages)
+  // Wallapop is no longer excluded — backend handles scroll-based pagination
   const allExhausted =
     Object.keys(pages).length > 0 &&
-    Object.keys(pages).every((p) => exhaustedPlatforms.has(p) || p === 'wallapop');
+    Object.keys(pages).every((p) => exhaustedPlatforms.has(p));
 
   useEffect(() => {
-    if (loading || preloading) return;
-    if (!query) return;
-
     const nextPage = currentPage + 1;
     const currentPageLoaded = pageItems[currentPage]?.length > 0;
     const nextPageExists = pageItems[nextPage] !== undefined;
+    console.log(`[AutoPreload] Effect fired: loading=${loading}, preloading=${preloading}, query="${query}", currentPage=${currentPage}, currentPageLoaded=${currentPageLoaded}, nextPageExists=${nextPageExists}, allExhausted=${allExhausted}, retries=${failedPagesRef.current.get(nextPage) || 0}/${MAX_PAGE_RETRIES}, pageItemsKeys=[${Object.keys(pageItems)}]`);
+
+    if (loading || preloading) return;
+    if (!query) return;
 
     // Only preload next page if current is loaded and next doesn't exist yet
-    if (currentPageLoaded && !nextPageExists && !allExhausted) {
+    const nextPageRetries = failedPagesRef.current.get(nextPage) || 0;
+    if (currentPageLoaded && !nextPageExists && !allExhausted && nextPageRetries < MAX_PAGE_RETRIES) {
+      console.log(`[AutoPreload] ✅ Triggering preloadPage(${nextPage})`);
       preloadPage(nextPage);
+    } else {
+      console.log(`[AutoPreload] ❌ Not preloading: currentPageLoaded=${currentPageLoaded}, nextPageExists=${nextPageExists}, allExhausted=${allExhausted}, retries=${nextPageRetries}/${MAX_PAGE_RETRIES}`);
     }
-  }, [currentPage, pageItems, loading, preloading, query, allExhausted, preloadPage]);
+  }, [currentPage, loading, preloading, query, allExhausted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Duplicate panel handlers ───────────────────────────────────
   const handleDuplicateClick = (item) => {
@@ -457,6 +592,13 @@ export default function HomePage() {
       else next.add(platform);
       return next;
     });
+  };
+
+  // "Only this" — hide all platforms except the selected one
+  const selectOnlyPlatform = (platform) => {
+    const allPlatformsInStats = Object.keys(platformStats);
+    const next = new Set(allPlatformsInStats.filter((p) => p !== platform));
+    setHiddenPlatforms(next);
   };
 
   // ─── Platform stats bar ─────────────────────────────────────────
@@ -574,33 +716,68 @@ export default function HomePage() {
                 </button>
               )}
 
-              {/* Per-platform chips */}
+              {/* "Wishlist First" toggle */}
+              {wishlistTerms.length > 0 && (
+                <button
+                  onClick={() => setShowWishlistFirst((prev) => !prev)}
+                  className={`glass-chip text-xs px-3 py-1.5 font-medium transition-colors ${
+                    showWishlistFirst
+                      ? "!border-amber-400 text-amber-700 dark:text-amber-300"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5" />
+                    {showWishlistFirst ? "Normal Order" : "Wishlist First"}
+                  </span>
+                </button>
+              )}
+
+              {/* Per-platform chips with "only" button */}
               {Object.entries(platformStats).map(([platform, stat]) => {
                 const config = platformOrder.find((p) => p.id === platform);
                 const isHidden = hiddenPlatforms.has(platform);
                 const isExhausted = exhaustedPlatforms.has(platform);
+                // Check if this is the ONLY visible platform
+                const isOnlyVisible = !isHidden &&
+                  Object.keys(platformStats).filter((p) => !hiddenPlatforms.has(p)).length === 1;
                 return (
-                  <button
+                  <div
                     key={platform}
-                    onClick={() => togglePlatformVisibility(platform)}
-                    title={isHidden ? `Show ${platform} items` : `Hide ${platform} items`}
-                    className={`glass-chip flex items-center gap-1.5 text-xs px-2.5 py-1.5 font-medium transition-all ${
+                    className={`glass-chip flex items-center text-xs font-medium transition-all overflow-hidden ${
                       isHidden
                         ? "opacity-50 line-through"
                         : "text-text-secondary hover:text-text-primary"
                     }`}
                   >
-                    {config && (
-                      <span className="w-4 h-4 flex items-center justify-center shrink-0">
-                        <img src={config.icon} alt={platform} className="max-w-full max-h-full object-contain" />
-                      </span>
+                    {/* Main chip area — toggles visibility */}
+                    <button
+                      onClick={() => togglePlatformVisibility(platform)}
+                      title={isHidden ? `Show ${platform} items` : `Hide ${platform} items`}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5"
+                    >
+                      {config && (
+                        <span className="w-4 h-4 flex items-center justify-center shrink-0">
+                          <img src={config.icon} alt={platform} className="max-w-full max-h-full object-contain" />
+                        </span>
+                      )}
+                      <span>{platform}</span>
+                      <span className="opacity-70">· {stat.totalCount ?? stat.count}</span>
+                      {isExhausted && !isHidden && (
+                        <Check className="w-3.5 h-3.5 text-green-500 ml-0.5" />
+                      )}
+                    </button>
+                    {/* "Only" button — shows only this platform */}
+                    {!isHidden && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); selectOnlyPlatform(platform); }}
+                        title={`Show only ${platform}`}
+                        className="flex items-center px-1.5 py-1.5 border-l border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 transition-colors"
+                      >
+                        <Focus className="w-3 h-3 opacity-60 hover:opacity-100" />
+                      </button>
                     )}
-                    <span>{platform}</span>
-                    <span className="opacity-70">· {stat.totalCount ?? stat.count}</span>
-                    {isExhausted && !isHidden && (
-                      <Check className="w-3.5 h-3.5 text-green-500 ml-0.5" />
-                    )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -631,9 +808,9 @@ export default function HomePage() {
             <GridCards columns={gridColumns}>
               {visibleItems.map((item, i) => (
                 <CardItem
-                  key={item.id || `${item.source}-${i}`}
+                  key={item.url || item.id || `${item.source}-${i}`}
                   item={item}
-                  isWishlisted={wishlistedIds.has(item.id || `${item.source}-${item.externalId}`)}
+                  isWishlisted={wishlistedIds.has(item.url || item.id || `${item.source}-${item.externalId}`)}
                   onDuplicateClick={handleDuplicateClick}
                 />
               ))}
@@ -682,7 +859,48 @@ export default function HomePage() {
                   Loading page {Math.max(...Object.keys(pageItems).map(Number)) + 1}…
                 </span>
               )}
+
+              {/* Manual load-more / retry button */}
+              {!preloading && !allExhausted && visibleItems.length > 0 && (() => {
+                const nextPage = currentPage + 1;
+                const nextPageExists = pageItems[nextPage] !== undefined;
+                if (nextPageExists) return null;
+                const retries = failedPagesRef.current.get(nextPage) || 0;
+                const isFailed = retries > 0;
+                return (
+                  <button
+                    onClick={() => {
+                      // Reset retry count for this page so preloadPage will attempt it
+                      if (retries >= MAX_PAGE_RETRIES) failedPagesRef.current.delete(nextPage);
+                      setPreloadError(null);
+                      preloadPage(nextPage);
+                    }}
+                    className="flex items-center gap-2 ml-2 px-4 py-2 text-sm font-medium rounded-xl glass-chip text-text-secondary hover:text-text-primary hover:scale-105 transition-all duration-200"
+                  >
+                    {isFailed ? (
+                      <>
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                        </svg>
+                        Retry page {nextPage}
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4" />
+                        Load page {nextPage}
+                      </>
+                    )}
+                  </button>
+                );
+              })()}
             </div>
+          )}
+
+          {/* Preload error message */}
+          {preloadError && !preloading && (
+            <p className="text-center text-sm text-amber-600 dark:text-amber-400 py-2">
+              Page {preloadError.page} failed to load: {preloadError.message} (attempt {preloadError.retries}/{MAX_PAGE_RETRIES})
+            </p>
           )}
 
           {/* All exhausted message */}
