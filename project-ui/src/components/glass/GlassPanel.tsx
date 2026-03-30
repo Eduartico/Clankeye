@@ -19,9 +19,9 @@ const INTENSITY: Record<
   "subtle" | "medium" | "high",
   { backgroundOpacity: number; blur: number; saturation: number; distortionScale: number }
 > = {
-  subtle: { backgroundOpacity: 0.12, blur: 14, saturation: 1.2, distortionScale: -100 },
-  medium: { backgroundOpacity: 0.18, blur: 16, saturation: 1.3, distortionScale: -120 },
-  high:   { backgroundOpacity: 0.25, blur: 24, saturation: 1.5, distortionScale: -150 },
+  subtle: { backgroundOpacity: 0.08, blur: 12, saturation: 1.2, distortionScale: -100 },
+  medium: { backgroundOpacity: 0.12, blur: 14, saturation: 1.3, distortionScale: -120 },
+  high:   { backgroundOpacity: 0.20, blur: 22, saturation: 1.5, distortionScale: -150 },
 };
 
 // ─── GlassPanel ───────────────────────────────────────────────────────────────

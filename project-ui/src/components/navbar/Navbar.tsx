@@ -19,7 +19,7 @@ export default function Navbar() {
           href="/"
           className="flex items-center gap-2 shrink-0 min-w-[160px] group"
         >
-          <img src="/favicon.ico" className="h-7 w-7" alt="Clankeye" />
+          <img src="/favicon.ico?v=2" className="h-7 w-7" alt="Clankeye" />
           <span className="text-xl font-bold whitespace-nowrap hidden sm:inline glass-text">
             Clankeye
           </span>

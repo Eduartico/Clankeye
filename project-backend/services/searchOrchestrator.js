@@ -214,47 +214,23 @@ class SearchOrchestrator {
       vintedCountry,
     });
 
-    // ── URL-based dedup ──────────────────────────────────────────
-    // Scroll-based scrapers (e.g. Wallapop) re-fetch items from earlier
-    // pages because they scroll from the top each time.  Strip those out
-    // before merging so only genuinely new items are returned.
-    const existingUrls = new Set(
-      existingItems.map(it => it.url).filter(Boolean)
-    );
-    const freshItems = existingUrls.size > 0
-      ? result.items.filter(item => !item.url || !existingUrls.has(item.url))
-      : result.items;
-
-    // Update platformStats with post-dedup counts so the frontend can
-    // correctly mark platforms as exhausted when they return 0 new items.
-    const dedupedStats = { ...result.platformStats };
-    for (const platform of Object.keys(dedupedStats)) {
-      const freshForPlatform = freshItems.filter(item => item.source === platform);
-      dedupedStats[platform] = {
-        ...dedupedStats[platform],
-        count: freshForPlatform.length,
-        rawCount: dedupedStats[platform].count, // preserve original count
-      };
-    }
-
     // Merge with existing items
-    const allItems = [...existingItems, ...freshItems];
+    const allItems = [...existingItems, ...result.items];
 
     // Run duplicate detection across the full set
     const duplicateGroups = duplicateDetector.detectDuplicates(allItems);
-    const annotatedNewItems = duplicateDetector.annotateItems(freshItems, duplicateGroups);
+    const annotatedNewItems = duplicateDetector.annotateItems(result.items, duplicateGroups);
 
     return {
       newItems: annotatedNewItems,
-      platformStats: dedupedStats,
+      platformStats: result.platformStats,
       errors: result.errors,
       duplicateGroups,
       meta: {
         ...result.meta,
         isLoadMore: true,
         existingItemCount: existingItems.length,
-        newItemCount: freshItems.length,
-        strippedDuplicateUrls: result.items.length - freshItems.length,
+        newItemCount: result.items.length,
         totalAfterMerge: allItems.length,
       },
     };

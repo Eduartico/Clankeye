@@ -6,7 +6,6 @@
  */
 
 import searchOrchestrator from '../services/searchOrchestrator.js';
-import { duplicateDetector } from '../services/duplicateDetector.js';
 
 // ─── SSE helper ──────────────────────────────────────────────────────────────
 
@@ -124,7 +123,6 @@ export const crawlSearchGet = async (req, res) => {
 export const crawlMore = async (req, res) => {
   try {
     const { query, platforms, pages, existingItems, vintedCountry } = req.body;
-    console.log(`[CrawlMore] Request received: query="${query}", platforms=[${platforms}], pages=${JSON.stringify(pages)}, existingItems=${existingItems?.length ?? 0}`);
 
     if (!query) {
       return res.status(400).json({
@@ -147,7 +145,6 @@ export const crawlMore = async (req, res) => {
       });
     }
 
-    console.log(`[CrawlMore] Starting orchestrator.getMore...`);
     const results = await searchOrchestrator.getMore({
       query,
       platforms,
@@ -155,14 +152,13 @@ export const crawlMore = async (req, res) => {
       existingItems: existingItems || [],
       vintedCountry: vintedCountry || 'pt',
     });
-    console.log(`[CrawlMore] Done: ${results.newItems?.length ?? 0} new items, meta=${JSON.stringify(results.meta)}`);
 
     res.status(200).json({
       success: true,
       data: results,
     });
   } catch (error) {
-    console.error('[CrawlMore] Error:', error);
+    console.error('Crawl more error:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -234,7 +230,6 @@ export const crawlSearchStream = async (req, res) => {
   safeSend('queued', { platforms: platformList });
 
   const startTime = Date.now();
-  const allItems = []; // accumulate for duplicate detection at the end
 
   try {
     await searchOrchestrator.searchWithCallback({
@@ -260,9 +255,6 @@ export const crawlSearchStream = async (req, res) => {
           _scrapedAt: new Date().toISOString(),
         }));
 
-        // Accumulate for duplicate detection later
-        allItems.push(...items);
-
         safeSend('platform_result', { platform, items, stat, status, error: result.error || null });
       },
     });
@@ -270,13 +262,7 @@ export const crawlSearchStream = async (req, res) => {
     safeSend('error', { message: err.message });
   }
 
-  // Run cross-platform duplicate detection on all accumulated items
-  let duplicateGroups = [];
-  if (allItems.length > 1) {
-    duplicateGroups = duplicateDetector.detectDuplicates(allItems);
-  }
-
-  safeSend('done', { wallTimeMs: Date.now() - startTime, duplicateGroups });
+  safeSend('done', { wallTimeMs: Date.now() - startTime });
   if (!closed) res.end();
 };
 

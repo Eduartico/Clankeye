@@ -1,19 +1,10 @@
 import BaseScraper from '../BaseScraper.js';
-import browserManager from '../BrowserManager.js';
-
-const WALLAPOP_TIMEOUT_MS = parseInt(process.env.SCRAPER_TIMEOUT_SECS || '120', 10) * 1000;
 
 /**
  * Wallapop scraper using Crawlee + Playwright
  * Search URL pattern: https://pt.wallapop.com/search?keywords={searchTerm}&order_by=newest
- *
- * Wallapop uses infinite scroll — pagination is achieved by scrolling down
- * multiple times to trigger lazy-loading of additional results.
- * Page 1 = initial load, Page 2 = scroll 3 more times, Page 3 = scroll 6 times, etc.
+ * Note: Wallapop uses infinite scroll — no page parameter.
  */
-const SCROLLS_PER_PAGE = 6;
-const SCROLL_PAUSE_MS = 1500;
-
 class WallapopScraper extends BaseScraper {
   constructor(config = {}) {
     super('wallapop', config);
@@ -21,84 +12,10 @@ class WallapopScraper extends BaseScraper {
   }
 
   buildSearchUrl(searchTerm, page = 1) {
-    return `${this.domain}/search?keywords=${encodeURIComponent(searchTerm)}&order_by=newest`;
-  }
-
-  /**
-   * Override BaseScraper.search() to implement scroll-based pagination.
-   * For page N, we scroll down (N * SCROLLS_PER_PAGE) times from the top,
-   * then extract all visible items. The server-side dedup will filter out
-   * items already returned in previous pages.
-   */
-  async search(searchTerm, page = 1) {
-    this.results = [];
-    const url = this.buildSearchUrl(searchTerm, page);
-    const totalScrolls = page * SCROLLS_PER_PAGE;
-    this.log(`🚀 Starting search for "${searchTerm}" (page ${page}, scrolling ${totalScrolls} times)`);
-    this.log(`🌐 URL: ${url}`);
-
-    const context = await browserManager.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      locale: 'es-ES',
-      viewport: { width: 1280, height: 800 },
-    });
-
-    const killTimer = setTimeout(() => {
-      this.log('Hard timeout — closing context', 'warn');
-      browserManager.closeContext(context).catch(() => {});
-    }, WALLAPOP_TIMEOUT_MS);
-
-    try {
-      const browserPage = await context.newPage();
-
-      // Block heavy resources
-      await browserPage.route('**/*.{woff,woff2,ttf,eot,mp4,webm}', route => route.abort());
-      await browserPage.addInitScript(() => {
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      });
-
-      this.log(`🌍 Navigating to ${url}...`);
-      try {
-        await browserPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        this.log('✅ DOM loaded — waiting for initial render...');
-      } catch (e) {
-        this.log(`⚠️ Navigation issue: ${e.message}, continuing anyway...`, 'warn');
-      }
-
-      // Wait for initial cards to appear
-      await browserPage.waitForTimeout(3000);
-
-      // Accept cookie banner if present
-      try {
-        const cookieBtn = await browserPage.$('#onetrust-accept-btn-handler, [data-testid="cookie-consent-accept-button"]');
-        if (cookieBtn) {
-          await cookieBtn.click();
-          this.log('Accepted cookie consent');
-          await browserPage.waitForTimeout(500);
-        }
-      } catch (_) {}
-
-      // Scroll down to load more results
-      for (let i = 0; i < totalScrolls; i++) {
-        await browserPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-        await browserPage.waitForTimeout(SCROLL_PAUSE_MS);
-        this.log(`📜 Scroll ${i + 1}/${totalScrolls} complete`);
-      }
-
-      // Extract items
-      this.log('🔎 Extracting items after scrolling...');
-      const items = await this.extractItems(browserPage, searchTerm);
-      this.results.push(...items);
-      this.logExtractedItems(items);
-    } catch (error) {
-      this.log(`❌ Scraper stopped: ${error.message}`, 'error');
-    } finally {
-      clearTimeout(killTimer);
-      await browserManager.closeContext(context);
-    }
-
-    this.log(`🏁 Done — ${this.results.length} items found.`);
-    return this.results;
+    // Wallapop uses infinite scroll — no pagination, order_by=newest for most recent
+    const url = `${this.domain}/search?keywords=${encodeURIComponent(searchTerm)}&order_by=newest`;
+    // Wallapop has no page parameter (infinite scroll) — always returns first batch
+    return url;
   }
 
   async extractItems(page, searchTerm) {

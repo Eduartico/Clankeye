@@ -132,44 +132,16 @@ function imageSimilarity(photos1, photos2) {
 // ─── Price Comparison ────────────────────────────────────────────
 
 /**
- * Parse price from various formats to a number.
- * Handles European (2.500,00) and US (2,500.00) formats.
+ * Parse price from various formats to a number
  */
 function parsePrice(price) {
   if (typeof price === 'number') return price;
   if (!price) return null;
   
-  let cleaned = String(price).replace(/[^\d.,]/g, '').trim();
-  if (!cleaned) return null;
-
-  const lastComma = cleaned.lastIndexOf(',');
-  const lastDot = cleaned.lastIndexOf('.');
-
-  if (lastComma > lastDot) {
-    // European: dots are thousands, comma is decimal
-    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-  } else if (lastDot > lastComma) {
-    if (lastComma < 0) {
-      // Only dots — check if 3 digits after last dot (thousands separator)
-      const afterDot = cleaned.length - lastDot - 1;
-      if (afterDot === 3) {
-        cleaned = cleaned.replace(/\./g, '');
-      }
-      // else it's a decimal dot, leave as-is
-    } else {
-      // US: commas are thousands, dot is decimal
-      cleaned = cleaned.replace(/,/g, '');
-    }
-  } else {
-    // Only commas or neither
-    if (lastComma >= 0) {
-      const afterComma = cleaned.length - lastComma - 1;
-      cleaned = afterComma === 3
-        ? cleaned.replace(/,/g, '')
-        : cleaned.replace(',', '.');
-    }
-  }
-
+  const cleaned = String(price)
+    .replace(/[^\d.,]/g, '')
+    .replace(',', '.');
+  
   const num = parseFloat(cleaned);
   return isNaN(num) ? null : num;
 }
@@ -211,8 +183,8 @@ const WEIGHTS = {
   images: 0.10,              // Image URL similarity
 };
 
-const DUPLICATE_THRESHOLD = 0.85; // minimum combined score to flag as duplicate
-const MIN_TITLE_SIMILARITY = 0.70; // both title metrics must EACH exceed this floor
+const DUPLICATE_THRESHOLD = 0.78; // minimum combined score to flag as duplicate
+const MIN_TITLE_SIMILARITY = 0.60; // both title metrics must EACH exceed this floor
 
 class DuplicateDetector {
   constructor(options = {}) {
@@ -258,9 +230,9 @@ class DuplicateDetector {
       score = score / totalWeight;
     }
 
-    // Hard floor: if EITHER title metric is below the minimum,
+    // Hard floor: if BOTH title metrics are below the minimum,
     // the items are clearly different products — force score to 0.
-    if (breakdown.titleLevenshtein < this.minTitleSimilarity ||
+    if (breakdown.titleLevenshtein < this.minTitleSimilarity &&
         breakdown.titleWordSet < this.minTitleSimilarity) {
       score = 0;
     }
@@ -382,8 +354,7 @@ class DuplicateDetector {
       for (const dupItem of group.items) {
         lookup.set(dupItem.id, {
           groupId: group.groupId,
-          // Count of OTHER duplicate items (exclude self)
-          duplicateCount: group.itemCount - 1,
+          duplicateCount: group.itemCount,
           platforms: group.platforms,
         });
       }
