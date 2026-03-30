@@ -47,12 +47,6 @@ $frontendScript = Get-NpmScript $frontendPath
 Ensure-NodeModules $backendPath
 Ensure-NodeModules $frontendPath
 
-# Generate swagger configuration before starting backend
-Write-Host "  [SETUP] Generating swagger configuration..." -ForegroundColor Yellow
-Push-Location $backendPath
-node swagger.js | Out-Null
-Pop-Location
-
 Write-Host ""
 Write-Host "  ================================================================" -ForegroundColor Cyan
 Write-Host "           CLANKEYE - starting all services" -ForegroundColor Cyan

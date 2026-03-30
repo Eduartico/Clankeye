@@ -1,6 +1,5 @@
 import React from "react";
 import PlatformBadge from "../cards/PlatformBadge";
-import { normalizePrice } from "../../utils/priceUtils";
 
 interface DuplicateGroup {
   groupId: string;
@@ -45,8 +44,8 @@ export default function DuplicatePanel({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center glass-overlay" onClick={onClose}>
-      <div className="glass-modal max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center glass-overlay">
+      <div className="glass-modal max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10 dark:border-white/5">
           <div>
@@ -119,7 +118,7 @@ export default function DuplicatePanel({
                 {item.title}
               </p>
               <p className="text-sm font-bold text-primary-500">
-                {normalizePrice(item.price).display}
+                € {item.price}
               </p>
             </div>
           </div>
@@ -152,7 +151,7 @@ export default function DuplicatePanel({
                     {dupItem.title}
                   </p>
                   <p className="text-sm font-bold text-primary-500">
-                    {normalizePrice(dupItem.price).display}
+                    € {dupItem.price}
                   </p>
                   {dupItem.seller && (
                     <p className="text-xs text-gray-400 mt-0.5">

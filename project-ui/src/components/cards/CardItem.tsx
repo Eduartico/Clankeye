@@ -30,8 +30,8 @@ export default function CardItem({ item, isWishlisted, onDuplicateClick }: CardI
     /* Outer wrapper carries wishlist-glow so the shimmer isn't clipped by GlassCard's overflow:hidden */
     <div className={`relative w-full rounded-[24px] ${isWishlisted ? "wishlist-glow" : ""}`}>
       <GlassCard variant="surface" className="w-full group">
-        {/* ── Image section: taller aspect for phone-captured vertical images ─ */}
-        <div className="relative w-full overflow-hidden rounded-t-[23px]" style={{ aspectRatio: '3/4', minHeight: '200px' }}>
+        {/* ── Image section: fills full width, height determined by aspect-ratio ─ */}
+        <div className="relative w-full overflow-hidden rounded-t-[23px]" style={{ aspectRatio: '4/3', minHeight: '160px' }}>
           <ImageCarousel images={images} />
 
           {/* Platform badge — overlaid bottom-left of image */}
@@ -54,7 +54,7 @@ export default function CardItem({ item, isWishlisted, onDuplicateClick }: CardI
 
         {/* ── Info section (compact, below image) ───────────────────── */}
         <div className="shrink-0 px-4 py-3 flex flex-col gap-1 border-t border-white/10 dark:border-white/5 rounded-b-[23px]">
-          <h5 className="text-sm font-semibold text-text-primary line-clamp-2 leading-snug" style={{ minHeight: '2.5rem' }}>
+          <h5 className="text-sm font-semibold text-text-primary line-clamp-2 leading-snug">
             {item.title}
           </h5>
           <div className="flex items-center justify-between mt-0.5">

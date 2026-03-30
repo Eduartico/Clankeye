@@ -23,24 +23,15 @@ class OlxPtScraper extends BaseScraper {
   async extractItems(page, searchTerm) {
     this.log('🔎 Looking for OLX PT listing elements...');
 
-    // Scroll incrementally to the page bottom to trigger lazy-loading of ALL card
-    // images — not just the first viewport-worth (~20 items). Each step waits a
-    // bit so the browser can decode and display newly revealed images.
+    // Scroll down to trigger lazy-loading of images
     await page.evaluate(async () => {
-      const STEP = 600;
-      const DELAY = 200;
-      let currentPos = 0;
-      while (currentPos < document.body.scrollHeight) {
-        window.scrollTo(0, currentPos);
-        await new Promise(r => setTimeout(r, DELAY));
-        currentPos += STEP;
+      for (let i = 0; i < 5; i++) {
+        window.scrollBy(0, 800);
+        await new Promise(r => setTimeout(r, 300));
       }
-      // Final scroll to actual bottom (handles dynamic height growth)
-      window.scrollTo(0, document.body.scrollHeight);
-      await new Promise(r => setTimeout(r, 300));
       window.scrollTo(0, 0);
     });
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1000);
 
     // Log all potential listing containers
     const containers = await page.evaluate(() => {
